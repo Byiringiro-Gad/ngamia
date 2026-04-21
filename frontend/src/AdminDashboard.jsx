@@ -19,11 +19,12 @@ import {
   Plus,
   Trash2,
   UserPlus,
-  Minus
+  Minus,
+  ArrowLeft
 } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const ThemeToggle = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -58,6 +59,8 @@ function AdminDashboard() {
   const [productFormData, setProductFormData] = useState({
     name: '', price: '', stock_quantity: '', max_per_customer: '', image_url: ''
   });
+
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Manual Order State
   const [showManualOrder, setShowManualOrder] = useState(false);
@@ -108,7 +111,7 @@ function AdminDashboard() {
       });
       fetchData();
     } catch (err) {
-      alert('Failed to save product');
+      setErrorMsg('Failed to save product');
     } finally {
       setLoading(false);
     }
@@ -117,7 +120,7 @@ function AdminDashboard() {
   const handleManualOrderSubmit = async (e) => {
     e.preventDefault();
     if (manualOrderData.items.length === 0) {
-      alert("Please add at least one item");
+      setErrorMsg('Please add at least one item');
       return;
     }
     try {
@@ -130,7 +133,7 @@ function AdminDashboard() {
       setManualOrderData({ customer_name: '', customer_phone: '', items: [] });
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to place manual order');
+      setErrorMsg(err.response?.data?.error || 'Failed to place manual order');
     } finally {
       setLoading(false);
     }
@@ -143,7 +146,7 @@ function AdminDashboard() {
       await axios.delete(`${API_URL}/orders/${id}`, config);
       fetchData();
     } catch (err) {
-      alert('Failed to remove order');
+      setErrorMsg('Failed to remove order');
     }
   };
 
@@ -160,7 +163,7 @@ function AdminDashboard() {
       const res = await axios.post(`${API_URL}/admin/login`, loginData);
       setToken(res.data.token);
     } catch (err) {
-      alert('Login failed: Invalid credentials');
+      setErrorMsg('Login failed: Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -176,7 +179,7 @@ function AdminDashboard() {
       await axios.patch(`${API_URL}/orders/${id}/status`, { status }, config);
       fetchData();
     } catch (err) {
-      alert('Update failed');
+      setErrorMsg('Update failed');
     }
   };
 
@@ -193,7 +196,7 @@ function AdminDashboard() {
       document.body.appendChild(link);
       link.click();
     } catch (err) {
-      alert('Export failed');
+      setErrorMsg('Export failed');
     }
   };
 
@@ -201,6 +204,13 @@ function AdminDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-primary p-6">
         <ThemeToggle />
+        {/* Back button */}
+        <button
+          onClick={() => window.history.back()}
+          className="fixed top-6 left-6 z-[100] w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:scale-90 transition-all cursor-pointer"
+        >
+          <ArrowLeft size={24} />
+        </button>
         <form onSubmit={handleLogin} className="card-serious w-full max-w-md p-10 space-y-8 shadow-2xl">
           <div className="text-center space-y-2">
             <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white dark:border-slate-800 shadow-xl">
@@ -226,6 +236,11 @@ function AdminDashboard() {
               required
             />
           </div>
+          {errorMsg && (
+            <div className="bg-red-50 dark:bg-red-900/20 border-4 border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 px-6 py-4 rounded-3xl font-black text-sm text-center uppercase tracking-widest">
+              {errorMsg}
+            </div>
+          )}
           <button type="submit" disabled={loading} className="btn-accent w-full">
             {loading ? <Loader2 className="animate-spin" /> : t('sign_in')}
           </button>
@@ -315,6 +330,12 @@ function AdminDashboard() {
         </header>
 
         <div className="flex-1 p-8 overflow-y-auto">
+          {errorMsg && (
+            <div className="max-w-5xl mx-auto mb-6 bg-red-50 dark:bg-red-900/20 border-4 border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 px-6 py-4 rounded-3xl font-black text-sm flex justify-between items-center uppercase tracking-widest">
+              {errorMsg}
+              <button onClick={() => setErrorMsg('')} className="ml-4 text-red-400 hover:text-red-600 text-lg">✕</button>
+            </div>
+          )}
           {/* Manual Order Modal */}
           {showManualOrder && (
             <div className="fixed inset-0 bg-indigo-950/60 backdrop-blur-md flex items-center justify-center z-[110] p-6">

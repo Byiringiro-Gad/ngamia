@@ -9,11 +9,18 @@ const PORT = process.env.PORT || 5000;
 
 // Allow requests from your frontend (update FRONTEND_URL in env)
 const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL]
-  : ['http://localhost:5173'];
+  ? [process.env.FRONTEND_URL.replace(/\/$/, '')] // strip trailing slash
+  : ['http://localhost:5173', 'http://localhost:4173'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
 }));
 app.use(express.json());
