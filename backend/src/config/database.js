@@ -4,8 +4,9 @@ require('dotenv').config({ override: false });
 let sequelize;
 
 if (process.env.DATABASE_URL) {
-  // Use full connection URL if provided
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+  // Replace mysql:// with mariadb:// so Sequelize uses the correct dialect
+  const dbUrl = process.env.DATABASE_URL.replace(/^mysql:\/\//, 'mariadb://');
+  sequelize = new Sequelize(dbUrl, {
     dialect: 'mariadb',
     logging: false,
     dialectOptions: {
