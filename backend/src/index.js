@@ -7,18 +7,15 @@ const models = require('./models');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allow requests from your frontend (update FRONTEND_URL in env)
+// Allow requests from your frontend
 const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL.replace(/\/$/, '')] // strip trailing slash
+  ? [process.env.FRONTEND_URL.replace(/\/$/, ''), 'http://localhost:5173', 'http://localhost:4173']
   : ['http://localhost:5173', 'http://localhost:4173'];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin.replace(/\/$/, ''))) {
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true); // curl, Postman, mobile
+    if (allowedOrigins.includes(origin.replace(/\/$/, ''))) return callback(null, true);
     callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
@@ -46,7 +43,8 @@ const startServer = async () => {
     console.log('Database connected successfully.');
     
     // Sync models (In production, use migrations)
-    await sequelize.sync({ force: false });
+    // WARNING: force: true deletes all data — only use in development
+    await sequelize.sync({ alter: true });
     console.log('Database synced.');
 
     app.listen(PORT, () => {

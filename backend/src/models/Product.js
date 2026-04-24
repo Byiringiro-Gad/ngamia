@@ -11,6 +11,10 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
@@ -26,7 +30,7 @@ const Product = sequelize.define('Product', {
     defaultValue: 5
   },
   image_url: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,   // TEXT to store base64 encoded images
     allowNull: true
   }
 });

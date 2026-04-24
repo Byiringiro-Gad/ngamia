@@ -4,29 +4,30 @@ require('dotenv').config({ override: false });
 let sequelize;
 
 if (process.env.DATABASE_URL) {
-  // Replace mysql:// with mariadb:// so Sequelize uses the correct dialect
-  const dbUrl = process.env.DATABASE_URL.replace(/^mysql:\/\//, 'mariadb://');
-  sequelize = new Sequelize(dbUrl, {
-    dialect: 'mariadb',
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
     logging: false,
     dialectOptions: {
-      allowPublicKeyRetrieval: true,
-      connectTimeout: 60000,
+      ssl: {
+        require: true,
+        rejectUnauthorized: false, // needed for Neon
+      },
     },
   });
 } else {
   sequelize = new Sequelize(
     process.env.DB_NAME || 'ngamia_db',
-    process.env.DB_USER || 'root',
+    process.env.DB_USER || 'postgres',
     process.env.DB_PASS || '',
     {
       host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '3306'),
-      dialect: 'mariadb',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      dialect: 'postgres',
       logging: false,
       dialectOptions: {
-        allowPublicKeyRetrieval: true,
-        connectTimeout: 60000,
+        ssl: process.env.DB_SSL === 'true'
+          ? { require: true, rejectUnauthorized: false }
+          : false,
       },
     }
   );

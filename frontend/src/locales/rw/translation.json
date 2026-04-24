@@ -38,8 +38,8 @@
   "add_product": "Ongeramo igicuruzwa",
   "edit_product": "Vugurura igicuruzwa",
   "save_product": "Bika igicuruzwa",
-  "image_url": "Ihuza ry'ifoto (Si itegeko)",
-  "image_placeholder": "Andika ihuza riri kuri interineti",
+  "image_url": "Icyapa (Ifoto y'igicuruzwa)",
+  "image_placeholder": "Hitamo ifoto uvana kuri telefone yawe",
   "max_per_cust": "Umubare ntarengwa ku muntu",
   "logout": "Sohoka",
   "sign_in": "Injira",
@@ -48,5 +48,16 @@
   "add_customer": "Ongeramo umukiriya",
   "confirm_remove": "Muremeza ko uyu muntu akurwa mu murongo?",
   "username": "Izina ryo kwinjira",
-  "password": "Ijambo banga"
+  "password": "Ijambo banga",
+  "description": "Ibisobanuro",
+  "description_placeholder": "Sobanura bike igicuruzwa (si itegeko)",
+  "review_your_order": "Reba mbere yo kohereza",
+  "cart_empty": "Nta kintu mwashyize mu gitebo",
+  "clear_all": "Siba byose",
+  "send_order": "Ohereza commande",
+  "your_order": "Commande yawe ifite",
+  "order_active": "Itegereje gufatwa",
+  "edit_to_change": "kanda vugurura uhindure",
+  "edit_order": "Vugurura commande",
+  "save_changes": "Bika impinduka"
 }

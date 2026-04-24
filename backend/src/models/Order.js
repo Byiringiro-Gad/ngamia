@@ -29,7 +29,8 @@ const Order = sequelize.define('Order', {
   },
   status: {
     type: DataTypes.ENUM('pending', 'ready', 'picked_up', 'missed'),
-    defaultValue: 'pending'
+    defaultValue: 'pending',
+    allowNull: false
   }
 });
 

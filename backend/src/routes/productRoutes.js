@@ -3,7 +3,8 @@ const router = express.Router();
 const ProductController = require('../controllers/ProductController');
 const { protect } = require('../utils/authMiddleware');
 
-router.get('/', ProductController.getAllProducts);
+router.get('/', ProductController.getAllProducts);           // customers — stock > 0 only
+router.get('/admin/all', protect, ProductController.getAllProductsAdmin); // admin — all products
 router.get('/:id', ProductController.getProductById);
 
 // Protected Admin Routes

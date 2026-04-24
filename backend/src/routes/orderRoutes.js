@@ -4,6 +4,8 @@ const OrderController = require('../controllers/OrderController');
 const { protect } = require('../utils/authMiddleware');
 
 router.post('/', OrderController.createOrder);
+router.get('/check/:phone', OrderController.getOrderByPhone); // customer check existing order
+router.put('/:id/items', OrderController.updateOrderItems);   // customer edit existing order
 
 // Protected Admin Routes
 router.get('/', protect, OrderController.getOrders);

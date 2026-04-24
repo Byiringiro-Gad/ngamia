@@ -38,8 +38,8 @@
   "add_product": "Add Product",
   "edit_product": "Edit Product",
   "save_product": "Save Product",
-  "image_url": "Image URL (Optional)",
-  "image_placeholder": "https://link-to-image.com",
+  "image_url": "Icyapa (Ifoto y'igicuruzwa)",
+  "image_placeholder": "Hitamo ifoto uvana kuri telefone yawe",
   "max_per_cust": "Max Per Customer",
   "logout": "Logout",
   "sign_in": "Sign In",
@@ -48,5 +48,16 @@
   "add_customer": "Manual Order",
   "confirm_remove": "Are you sure you want to remove this order?",
   "username": "Username",
-  "password": "Password"
+  "password": "Password",
+  "description": "Description",
+  "description_placeholder": "Brief description of this product (optional)",
+  "review_your_order": "Review before sending",
+  "cart_empty": "Your cart is empty",
+  "clear_all": "Clear all",
+  "send_order": "Send Order",
+  "your_order": "Your Active Order",
+  "order_active": "Pending pickup",
+  "edit_to_change": "tap edit to change",
+  "edit_order": "Edit Order",
+  "save_changes": "Save Changes"
 }

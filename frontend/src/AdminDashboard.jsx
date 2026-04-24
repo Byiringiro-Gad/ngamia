@@ -1,26 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ClipboardList, 
-  Download, 
-  RefreshCcw,
-  Check,
-  XCircle,
-  Clock,
-  Lock,
-  LogOut,
-  ChevronRight,
-  Loader2,
-  Sun,
-  Moon,
-  Plus,
-  Trash2,
-  UserPlus,
-  Minus,
-  ArrowLeft
+import {
+  Package, ClipboardList, Download, RefreshCcw,
+  Check, Clock, Lock, LogOut, Loader2, Sun, Moon,
+  Plus, Trash2, UserPlus, Minus, ArrowLeft, AlertCircle, X
 } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 
@@ -28,494 +12,525 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const ThemeToggle = () => {
   const { isDark, toggleTheme } = useTheme();
-
   return (
-    <div className="fixed top-6 right-6 z-[100]">
-      <button 
-        onClick={toggleTheme}
-        className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:scale-90 transition-all cursor-pointer"
-      >
-        {isDark ? <Sun size={24} /> : <Moon size={24} />}
-      </button>
-    </div>
+    <button onClick={toggleTheme} type="button"
+      className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all flex-shrink-0"
+      aria-label="Toggle theme">
+      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
   );
 };
 
+const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: '', max_per_customer: '', image_url: '' };
+
 function AdminDashboard() {
   const { t, i18n } = useTranslation();
-  const { isDark } = useTheme();
-  
-  // Use session state only, do not persist token in localStorage for automatic sign-out
-  const [token, setToken] = useState(null); 
+  const [token, setToken] = useState(null);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState('orders'); // orders, inventory
-  
-  // Product Form State
+  const [saving, setSaving] = useState(false);
+  const [view, setView] = useState('orders');
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [productFormData, setProductFormData] = useState({
-    name: '', price: '', stock_quantity: '', max_per_customer: '', image_url: ''
-  });
-
+  const [productFormData, setProductFormData] = useState(EMPTY_PRODUCT);
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Manual Order State
   const [showManualOrder, setShowManualOrder] = useState(false);
-  const [manualOrderData, setManualOrderData] = useState({
-    customer_name: '', customer_phone: '', items: []
-  });
+  const [manualOrderData, setManualOrderData] = useState({ customer_name: '', customer_phone: '', items: [] });
 
-  // Automatically sign out if the user leaves the tab/window or refreshes
   useEffect(() => {
     if (token) {
       fetchData();
-      const interval = setInterval(fetchData, 30000);
-      return () => clearInterval(interval);
     }
+  }, [token]);
+
+  // Separate interval that always has fresh token reference
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(() => {
+      fetchData();
+    }, 15000); // refresh every 15 seconds
+    return () => clearInterval(interval);
   }, [token]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const cfg = { headers: { Authorization: `Bearer ${token}` } };
       const [ordRes, prodRes] = await Promise.all([
-        axios.get(`${API_URL}/orders`, config),
-        axios.get(`${API_URL}/products`)
+        axios.get(`${API_URL}/orders`, cfg),
+        axios.get(`${API_URL}/products/admin/all`, cfg),
       ]);
       setOrders(ordRes.data);
       setProducts(prodRes.data);
     } catch (err) {
-      if (err.response?.status === 401) setToken(null);
+      if (err.response?.status === 401) {
+        setToken(null);
+      } else {
+        setErrorMsg(err.response?.data?.error || 'Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setErrorMsg('');
+      const res = await axios.post(`${API_URL}/admin/login`, loginData);
+      setToken(res.data.token);
+    } catch {
+      setErrorMsg('Invalid username or password');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      setSaving(true);
+      setErrorMsg('');
+      const cfg = { headers: { Authorization: `Bearer ${token}` } };
       if (editingProduct) {
-        await axios.put(`${API_URL}/products/${editingProduct.id}`, productFormData, config);
+        await axios.put(`${API_URL}/products/${editingProduct.id}`, productFormData, cfg);
       } else {
-        await axios.post(`${API_URL}/products`, productFormData, config);
+        await axios.post(`${API_URL}/products`, productFormData, cfg);
       }
+      // Close form immediately on success
       setShowProductForm(false);
       setEditingProduct(null);
-      setProductFormData({
-        name: '', price: '', stock_quantity: '', max_per_customer: '', image_url: ''
-      });
+      setProductFormData(EMPTY_PRODUCT);
       fetchData();
     } catch (err) {
-      setErrorMsg('Failed to save product');
+      setErrorMsg(err.response?.data?.error || 'Failed to save product');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const handleManualOrderSubmit = async (e) => {
     e.preventDefault();
-    if (manualOrderData.items.length === 0) {
-      setErrorMsg('Please add at least one item');
-      return;
-    }
+    if (manualOrderData.items.length === 0) { setErrorMsg('Add at least one item'); return; }
     try {
-      setLoading(true);
-      await axios.post(`${API_URL}/orders`, {
-        ...manualOrderData,
-        language: i18n.language
-      });
+      setSaving(true);
+      setErrorMsg('');
+      await axios.post(`${API_URL}/orders`, { ...manualOrderData, language: i18n.language });
       setShowManualOrder(false);
       setManualOrderData({ customer_name: '', customer_phone: '', items: [] });
       fetchData();
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || 'Failed to place manual order');
+      setErrorMsg(err.response?.data?.error || 'Failed to place order');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const removeOrder = async (id) => {
     if (!window.confirm(t('confirm_remove'))) return;
     try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`${API_URL}/orders/${id}`, config);
+      await axios.delete(`${API_URL}/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchData();
-    } catch (err) {
-      setErrorMsg('Failed to remove order');
-    }
-  };
-
-  const startEditProduct = (p) => {
-    setEditingProduct(p);
-    setProductFormData(p);
-    setShowProductForm(true);
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const res = await axios.post(`${API_URL}/admin/login`, loginData);
-      setToken(res.data.token);
-    } catch (err) {
-      setErrorMsg('Login failed: Invalid credentials');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    setToken(null);
+    } catch { setErrorMsg('Failed to remove order'); }
   };
 
   const updateStatus = async (id, status) => {
     try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.patch(`${API_URL}/orders/${id}/status`, { status }, config);
+      await axios.patch(`${API_URL}/orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
       fetchData();
-    } catch (err) {
-      setErrorMsg('Update failed');
-    }
+    } catch { setErrorMsg('Update failed'); }
   };
 
   const exportPDF = async () => {
     try {
-      const response = await axios.get(`${API_URL}/admin/export/daily`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
+      const res = await axios.get(`${API_URL}/admin/export/daily`, {
+        headers: { Authorization: `Bearer ${token}` }, responseType: 'blob'
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `manifest-${new Date().toISOString().split('T')[0]}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-    } catch (err) {
-      setErrorMsg('Export failed');
-    }
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.setAttribute('download', `manifest-${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch { setErrorMsg('Export failed'); }
   };
 
+  const openEditProduct = (p) => {
+    setEditingProduct(p);
+    setProductFormData({ ...p, description: p.description || '' });
+    setShowProductForm(true);
+  };
+
+  const closeProductForm = () => {
+    setShowProductForm(false);
+    setEditingProduct(null);
+    setProductFormData(EMPTY_PRODUCT);
+    setErrorMsg('');
+  };
+
+  /* ── LOGIN SCREEN ── */
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary p-6">
-        <ThemeToggle />
-        {/* Back button */}
-        <button
-          onClick={() => window.history.back()}
-          className="fixed top-6 left-6 z-[100] w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:scale-90 transition-all cursor-pointer"
-        >
-          <ArrowLeft size={24} />
-        </button>
-        <form onSubmit={handleLogin} className="card-serious w-full max-w-md p-10 space-y-8 shadow-2xl">
-          <div className="text-center space-y-2">
-            <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white dark:border-slate-800 shadow-xl">
-              <Lock className="text-primary" size={32} />
-            </div>
-            <h1 className="text-3xl font-black text-text-main">{t('admin_portal')}</h1>
-            <p className="text-text-muted font-bold">{t('admin_login_msg')}</p>
-          </div>
-          <div className="space-y-4">
-            <input 
-              className="input-serious text-lg p-4"
-              placeholder="Username"
-              value={loginData.username}
-              onChange={e => setLoginData({...loginData, username: e.target.value})}
-              required
-            />
-            <input 
-              className="input-serious text-lg p-4"
-              type="password"
-              placeholder="Password"
-              value={loginData.password}
-              onChange={e => setLoginData({...loginData, password: e.target.value})}
-              required
-            />
-          </div>
-          {errorMsg && (
-            <div className="bg-red-50 dark:bg-red-900/20 border-4 border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 px-6 py-4 rounded-3xl font-black text-sm text-center uppercase tracking-widest">
-              {errorMsg}
-            </div>
-          )}
-          <button type="submit" disabled={loading} className="btn-accent w-full">
-            {loading ? <Loader2 className="animate-spin" /> : t('sign_in')}
+      <div className="min-h-screen bg-bg flex flex-col">
+        <div className="flex items-center justify-between p-5">
+          <button onClick={() => window.history.back()} type="button"
+            className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
+            <ArrowLeft size={20} />
           </button>
-          <div className="flex gap-2 justify-center pt-4">
-             <button type="button" onClick={() => i18n.changeLanguage('en')} className={`px-3 py-1 rounded-lg font-bold ${i18n.language === 'en' ? 'bg-primary text-white' : 'bg-bg text-text-muted'}`}>EN</button>
-             <button type="button" onClick={() => i18n.changeLanguage('rw')} className={`px-3 py-1 rounded-lg font-bold ${i18n.language === 'rw' ? 'bg-primary text-white' : 'bg-bg text-text-muted'}`}>RW</button>
-             <button type="button" onClick={() => i18n.changeLanguage('fr')} className={`px-3 py-1 rounded-lg font-bold ${i18n.language === 'fr' ? 'bg-primary text-white' : 'bg-bg text-text-muted'}`}>FR</button>
+          <ThemeToggle />
+        </div>
+        <div className="flex-1 flex flex-col justify-center px-6 pb-10 max-w-sm mx-auto w-full">
+          <div className="mb-8 text-center">
+            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Lock size={28} className="text-white" />
+            </div>
+            <h1 className="text-3xl font-black text-text-main font-display">{t('admin_portal')}</h1>
+            <p className="text-text-muted text-sm mt-1">{t('admin_login_msg')}</p>
           </div>
-        </form>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input className="input-serious" placeholder="Username"
+              value={loginData.username} onChange={e => setLoginData({ ...loginData, username: e.target.value })} required />
+            <input className="input-serious" type="password" placeholder="Password"
+              value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} required />
+            {errorMsg && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-semibold">
+                <AlertCircle size={16} /> {errorMsg}
+              </div>
+            )}
+            <button type="submit" disabled={saving} className="btn-primary w-full mt-2">
+              {saving ? <Loader2 className="animate-spin" size={22} /> : t('sign_in')}
+            </button>
+          </form>
+          <div className="flex gap-2 justify-center mt-6">
+            {['en', 'rw', 'fr'].map(lang => (
+              <button key={lang} type="button" onClick={() => i18n.changeLanguage(lang)}
+                className={`px-3 py-1 rounded-lg font-bold text-sm transition-all ${i18n.language === lang ? 'bg-primary text-white' : 'bg-card border border-border-main text-text-muted'}`}>
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
+  /* ── MAIN DASHBOARD ── */
   return (
-    <div className="min-h-screen bg-bg text-text-main flex transition-colors duration-500">
-      <ThemeToggle />
-      {/* Sidebar */}
-      <aside className="w-80 bg-primary dark:bg-slate-900 text-white flex flex-col hidden lg:flex border-r border-border-main shrink-0 h-screen sticky top-0">
-        <div className="p-8">
-          <h2 className="text-3xl font-black tracking-tighter flex items-center gap-3 font-display text-white">
-            <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shadow-lg text-indigo-900">N</div>
-            Ngamia
-          </h2>
-        </div>
-        
-        <nav className="flex-1 px-4 space-y-2">
-          <button 
-            onClick={() => setView('orders')}
-            className={`w-full flex items-center justify-between p-5 rounded-3xl transition-all group ${view === 'orders' ? 'bg-white/20 shadow-lg' : 'hover:bg-white/10'}`}
-          >
-            <div className="flex items-center gap-4">
-              <ClipboardList size={22} />
-              <span className="font-bold text-lg">{t('active_queue')}</span>
-            </div>
-            <ChevronRight size={18} className={view === 'orders' ? 'opacity-100' : 'opacity-0'} />
-          </button>
-
-          <button 
-            onClick={() => setView('inventory')}
-            className={`w-full flex items-center justify-between p-5 rounded-3xl transition-all group ${view === 'inventory' ? 'bg-white/20 shadow-lg' : 'hover:bg-white/10'}`}
-          >
-            <div className="flex items-center gap-4">
-              <Package size={22} />
-              <span className="font-bold text-lg">{t('inventory')}</span>
-            </div>
-            <ChevronRight size={18} className={view === 'inventory' ? 'opacity-100' : 'opacity-0'} />
-          </button>
-        </nav>
-
-        <div className="p-6 border-t border-white/10 space-y-4">
-          <div className="flex gap-2 justify-center">
-             <button onClick={() => i18n.changeLanguage('en')} className={`px-2 py-1 rounded font-bold text-xs ${i18n.language === 'en' ? 'bg-accent text-indigo-950' : 'bg-white/10 text-white/50'}`}>EN</button>
-             <button onClick={() => i18n.changeLanguage('rw')} className={`px-2 py-1 rounded font-bold text-xs ${i18n.language === 'rw' ? 'bg-accent text-indigo-950' : 'bg-white/10 text-white/50'}`}>RW</button>
-             <button onClick={() => i18n.changeLanguage('fr')} className={`px-2 py-1 rounded font-bold text-xs ${i18n.language === 'fr' ? 'bg-accent text-indigo-950' : 'bg-white/10 text-white/50'}`}>FR</button>
-           </div>
-          <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 text-white/70 hover:text-white hover:bg-red-500 rounded-3xl transition-all font-black uppercase tracking-widest text-xs">
-            <LogOut size={20} /> {t('logout')}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-card dark:bg-slate-800 border-b border-border-main p-8 flex justify-between items-center shrink-0 shadow-sm sticky top-0 z-50 transition-colors">
-          <div>
-            <h1 className="text-4xl font-black text-text-main tracking-tight leading-none">
+    <div className="min-h-screen bg-bg text-text-main flex flex-col pb-20 lg:pb-0">
+      {/* Top header — mobile & desktop */}
+      <header className="sticky top-0 z-40 bg-card border-b border-border-main px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0">N</div>
+          <div className="min-w-0">
+            <h1 className="font-black text-text-main text-base font-display leading-none truncate">
               {view === 'orders' ? t('active_queue') : t('inventory')}
             </h1>
-            <p className="text-text-muted font-bold mt-2">{t('manage_operations')}</p>
+            <p className="text-text-muted text-xs font-semibold hidden sm:block">{t('manage_operations')}</p>
           </div>
-          <div className="flex gap-4 pr-16">
-            {view === 'orders' && (
-              <button onClick={() => setShowManualOrder(true)} className="btn-accent px-6 py-3 shadow-xl">
-                <UserPlus size={20} /> {t('add_customer')}
-              </button>
-            )}
-            {view === 'inventory' && (
-              <button onClick={() => setShowProductForm(true)} className="btn-accent px-6 py-3 shadow-xl">
-                <Plus size={20} /> {t('add_product')}
-              </button>
-            )}
-            <button onClick={fetchData} className="btn-secondary px-4 py-3 shadow-sm"><RefreshCcw size={20} /></button>
-            <button onClick={exportPDF} className="btn-primary px-6 py-3 shadow-lg">
-              <Download size={20} /> {t('export_manifest')}
-            </button>
-          </div>
-        </header>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchData} type="button" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
+            <RefreshCcw size={16} />
+          </button>
+          <button onClick={exportPDF} type="button" className="hidden sm:flex w-10 h-10 bg-primary rounded-xl items-center justify-center text-white active:scale-90 transition-all">
+            <Download size={16} />
+          </button>
+          <ThemeToggle />
+          <button onClick={() => setToken(null)} type="button" className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 active:scale-90 transition-all border border-red-100 dark:border-red-900/30">
+            <LogOut size={16} />
+          </button>
+        </div>
+      </header>
 
-        <div className="flex-1 p-8 overflow-y-auto">
-          {errorMsg && (
-            <div className="max-w-5xl mx-auto mb-6 bg-red-50 dark:bg-red-900/20 border-4 border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 px-6 py-4 rounded-3xl font-black text-sm flex justify-between items-center uppercase tracking-widest">
-              {errorMsg}
-              <button onClick={() => setErrorMsg('')} className="ml-4 text-red-400 hover:text-red-600 text-lg">✕</button>
-            </div>
-          )}
-          {/* Manual Order Modal */}
-          {showManualOrder && (
-            <div className="fixed inset-0 bg-indigo-950/60 backdrop-blur-md flex items-center justify-center z-[110] p-6">
-              <div className="card-serious w-full max-w-lg shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)]">
-                <h2 className="text-3xl font-black mb-8 text-primary">{t('add_customer')}</h2>
-                <form onSubmit={handleManualOrderSubmit} className="space-y-6">
-                  <input className="input-serious text-lg" placeholder={t('name')} value={manualOrderData.customer_name} onChange={e => setManualOrderData({...manualOrderData, customer_name: e.target.value})} required />
-                  <input className="input-serious text-lg" placeholder={t('phone')} value={manualOrderData.customer_phone} onChange={e => setManualOrderData({...manualOrderData, customer_phone: e.target.value})} required />
-                  <div className="space-y-2">
-                    <p className="font-bold text-sm uppercase tracking-widest text-text-muted">{t('products_title')}</p>
-                    <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto p-2 border rounded-3xl border-border-main">
-                      {products.map(p => {
-                        const existing = manualOrderData.items.find(i => i.product_id === p.id);
-                        return (
-                          <div key={p.id} className="flex justify-between items-center bg-bg p-3 rounded-2xl">
-                            <span className="font-bold text-sm">{p.name}</span>
-                            <div className="flex items-center gap-3">
-                              {existing ? (
-                                <>
-                                  <button type="button" onClick={() => setManualOrderData({...manualOrderData, items: manualOrderData.items.map(i => i.product_id === p.id ? {...i, quantity: Math.max(0, i.quantity - 1)} : i).filter(i => i.quantity > 0)})} className="p-1 bg-white dark:bg-slate-700 rounded-lg"><Minus size={14}/></button>
-                                  <span className="font-black w-4 text-center">{existing.quantity}</span>
-                                  <button type="button" onClick={() => setManualOrderData({...manualOrderData, items: manualOrderData.items.map(i => i.product_id === p.id ? {...i, quantity: Math.min(p.max_per_customer, i.quantity + 1)} : i)})} className="p-1 bg-primary text-white rounded-lg"><Plus size={14}/></button>
-                                </>
-                              ) : (
-                                <button type="button" onClick={() => setManualOrderData({...manualOrderData, items: [...manualOrderData.items, {product_id: p.id, quantity: 1}]})} className="text-primary font-black text-sm uppercase tracking-wider">{t('add_to_cart')}</button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <button type="submit" className="btn-accent flex-1">{t('confirm_order')}</button>
-                    <button type="button" onClick={() => setShowManualOrder(false)} className="btn-secondary flex-1">{t('cancel')}</button>
-                  </div>
-                </form>
+      {errorMsg && (
+        <div className="mx-4 mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 text-sm font-semibold">
+          <div className="flex items-center gap-2"><AlertCircle size={16} /> {errorMsg}</div>
+          <button onClick={() => setErrorMsg('')} type="button" className="text-red-400 font-black">✕</button>
+        </div>
+      )}
+
+      {/* Content */}
+      <main className="flex-1 overflow-y-auto px-4 py-4">
+        {view === 'orders' && (
+          <div className="space-y-3 max-w-2xl mx-auto">
+            {loading && orders.length === 0 ? (
+              <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" size={40} /></div>
+            ) : orders.length === 0 ? (
+              <div className="text-center py-16 text-text-muted">
+                <ClipboardList size={48} className="mx-auto mb-3 opacity-30" />
+                <p className="font-bold text-sm uppercase tracking-widest">No orders yet</p>
               </div>
-            </div>
-          )}
-
-          {/* Product Form Modal */}
-          {showProductForm && (
-            <div className="fixed inset-0 bg-indigo-950/60 backdrop-blur-md flex items-center justify-center z-[110] p-6">
-              <div className="card-serious w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-                <h2 className="text-3xl font-black mb-8 text-primary">{editingProduct ? t('edit_product') : t('add_product')}</h2>
-                <form onSubmit={handleProductSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="font-black text-text-muted uppercase tracking-widest text-xs">{t('image_url')}</label>
-                    <input className="input-serious text-lg p-4" value={productFormData.image_url} onChange={e => setProductFormData({...productFormData, image_url: e.target.value})} placeholder="https://..." />
-                  </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="font-black text-text-muted uppercase tracking-widest text-xs">{t('product_name')}</label>
-                    <input className="input-serious text-lg p-4" value={productFormData.name} onChange={e => setProductFormData({...productFormData, name: e.target.value})} required />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="font-black text-text-muted uppercase tracking-widest text-xs">{t('price')}</label>
-                    <input type="number" className="input-serious text-lg p-4" value={productFormData.price} onChange={e => setProductFormData({...productFormData, price: e.target.value})} required />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="font-black text-text-muted uppercase tracking-widest text-xs">{t('stock')}</label>
-                    <input type="number" className="input-serious text-lg p-4" value={productFormData.stock_quantity} onChange={e => setProductFormData({...productFormData, stock_quantity: e.target.value})} required />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="font-black text-text-muted uppercase tracking-widest text-xs">{t('max_per_cust')}</label>
-                    <input type="number" className="input-serious text-lg p-4" value={productFormData.max_per_customer} onChange={e => setProductFormData({...productFormData, max_per_customer: e.target.value})} required />
-                  </div>
-                  <div className="md:col-span-2 flex gap-4 pt-6">
-                    <button type="submit" className="btn-accent flex-1 shadow-xl">{t('save_product')}</button>
-                    <button type="button" onClick={() => {setShowProductForm(false); setEditingProduct(null);}} className="btn-secondary flex-1">{t('cancel')}</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {view === 'orders' ? (
-            <div className="grid grid-cols-1 gap-6 max-w-5xl mx-auto">
-              {orders.map(order => (
-                <div key={order.id} className="card-serious flex flex-col md:flex-row justify-between gap-8 p-8 border-l-[12px] border-l-primary dark:border-l-primary shadow-xl hover:scale-[1.02] transition-transform">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-6 mb-6">
-                      <span className="text-7xl font-black text-primary tracking-tighter">#{order.queue_number}</span>
-                      <div>
-                        <h3 className="text-2xl font-black text-text-main">{order.customer_name}</h3>
-                        <p className="text-xl text-text-muted font-bold tracking-wide">{order.customer_phone}</p>
-                      </div>
-                    </div>
-                    <div className="bg-bg p-4 rounded-3xl inline-flex flex-wrap gap-3 border-2 border-border-main transition-colors">
-                       {order.OrderItems.map(item => (
-                         <span key={item.id} className="bg-card px-4 py-2 rounded-2xl border border-border-main font-black text-text-main text-sm uppercase tracking-wider shadow-sm">
-                           {item.quantity}x {item.Product.name}
-                         </span>
-                       ))}
+            ) : orders.map(order => (
+              <div key={order.id} className="card-serious p-4 border-l-4 border-l-primary">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-4xl font-black text-primary font-display leading-none">#{order.queue_number}</span>
+                    <div>
+                      <p className="font-black text-text-main text-base">{order.customer_name}</p>
+                      <p className="text-text-muted text-sm font-semibold">{order.customer_phone}</p>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col items-end justify-between gap-6 border-t md:border-t-0 md:border-l border-border-main pt-6 md:pt-0 md:pl-10">
-                    <div className="text-right">
-                      <p className="text-sm font-black text-text-muted uppercase tracking-widest mb-2">{t('pickup_scheduled')}</p>
-                      <p className="text-4xl font-black text-text-main flex items-center gap-4 justify-end font-display">
-                        <Clock size={32} className="text-accent" /> 
-                        {new Date(order.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    
-                    <div className="flex gap-3">
-                      {order.status === 'pending' ? (
-                        <>
-                          <button 
-                            onClick={() => updateStatus(order.id, 'picked_up')}
-                            className="bg-green-600 text-white px-8 py-4 rounded-3xl font-black hover:bg-green-700 transition-all flex items-center gap-2 shadow-lg"
-                          >
-                            <Check size={24} /> {t('complete')}
-                          </button>
-                          <button 
-                            onClick={() => removeOrder(order.id)}
-                            className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-6 py-4 rounded-3xl font-black hover:bg-red-100 transition-all flex items-center gap-2 border-4 border-red-100 dark:border-red-900/30 shadow-lg"
-                            title={t('remove_order')}
-                          >
-                            <Trash2 size={24} />
-                          </button>
-                        </>
-                      ) : (
-                        <span className={`px-8 py-4 rounded-3xl font-black uppercase text-sm tracking-[0.2em] shadow-inner ${
-                          order.status === 'picked_up' ? 'bg-bg text-text-muted border-2 border-border-main' : 
-                          'bg-red-600 text-white'
-                        }`}>
-                          {order.status === 'picked_up' ? t('complete') : t('missed')}
-                        </span>
-                      )}
-                    </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-text-muted font-bold uppercase tracking-widest">{t('pickup_scheduled')}</p>
+                    <p className="font-black text-text-main font-display flex items-center gap-1 justify-end">
+                      <Clock size={14} className="text-accent" />
+                      {new Date(order.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="card-serious overflow-hidden p-0 max-w-6xl mx-auto shadow-2xl border-4 border-border-main">
-              <table className="w-full text-left">
-                <thead className="bg-primary text-white">
-                  <tr>
-                    <th className="p-6 font-black uppercase tracking-wider text-xs">{t('image')}</th>
-                    <th className="p-6 font-black uppercase tracking-wider text-xs">{t('product_name')}</th>
-                    <th className="p-6 font-black uppercase tracking-wider text-xs">{t('price')} (RWF)</th>
-                    <th className="p-6 font-black uppercase tracking-wider text-xs">{t('stock')}</th>
-                    <th className="p-6 font-black uppercase tracking-wider text-xs">{t('max_per_cust')}</th>
-                    <th className="p-6 font-black uppercase tracking-wider text-xs text-right">{t('actions')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-main">
-                  {products.map(p => (
-                    <tr key={p.id} className="hover:bg-bg transition-colors group">
-                      <td className="p-6">
-                        {p.image_url ? (
-                          <img src={p.image_url} className="w-20 h-20 object-cover rounded-[1.5rem] border-4 border-white dark:border-slate-800 shadow-lg" alt="" />
-                        ) : (
-                          <div className="w-20 h-20 bg-bg rounded-[1.5rem] flex items-center justify-center text-text-muted border-4 border-dashed border-border-main">
-                            <Package size={32} />
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-6 font-black text-2xl text-text-main leading-tight font-display">{p.name}</td>
-                      <td className="p-6 font-black text-2xl text-primary tracking-tighter font-display">{p.price}</td>
-                      <td className="p-6">
-                        <span className={`px-5 py-2 rounded-2xl font-black text-lg ${p.stock_quantity < 10 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600 dark:bg-green-900/30'}`}>
-                          {p.stock_quantity}
-                        </span>
-                      </td>
-                      <td className="p-6 font-black text-text-muted text-2xl tracking-tighter font-display">{p.max_per_customer}</td>
-                      <td className="p-6 text-right">
-                        <button onClick={() => startEditProduct(p)} className="btn-secondary px-8 py-3 text-sm shadow-sm font-black uppercase tracking-widest">{t('edit_product')}</button>
-                      </td>
-                    </tr>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {order.OrderItems.map(item => (
+                    <span key={item.id} className="bg-bg border border-border-main px-3 py-1 rounded-xl text-xs font-black text-text-main uppercase tracking-wide">
+                      {item.quantity}× {item.Product.name}
+                    </span>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </div>
+                {order.status === 'pending' ? (
+                  <div className="flex gap-2">
+                    <button onClick={() => updateStatus(order.id, 'picked_up')} type="button"
+                      className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-black flex items-center justify-center gap-2 text-sm active:scale-95 transition-all">
+                      <Check size={18} /> {t('complete')}
+                    </button>
+                    <button onClick={() => removeOrder(order.id)} type="button"
+                      className="w-12 h-12 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-100 dark:border-red-900/30 active:scale-95 transition-all">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <span className={`inline-block px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest ${order.status === 'picked_up' ? 'bg-bg text-text-muted border border-border-main' : 'bg-red-600 text-white'}`}>
+                    {order.status === 'picked_up' ? t('complete') : t('missed')}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {view === 'inventory' && (
+          <div className="space-y-3 max-w-2xl mx-auto">
+            {products.length === 0 ? (
+              <div className="text-center py-16 text-text-muted">
+                <Package size={48} className="mx-auto mb-3 opacity-30" />
+                <p className="font-bold text-sm uppercase tracking-widest">No products yet</p>
+              </div>
+            ) : products.map(p => (
+              <div key={p.id} className="card-serious p-4 flex items-center gap-4">
+                {p.image_url ? (
+                  <img src={p.image_url} className="w-16 h-16 object-cover rounded-2xl flex-shrink-0 border border-border-main" alt={p.name} />
+                ) : (
+                  <div className="w-16 h-16 bg-bg rounded-2xl flex items-center justify-center text-text-muted flex-shrink-0 border-2 border-dashed border-border-main">
+                    <Package size={24} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-text-main font-display truncate">{p.name}</p>
+                  {p.description && <p className="text-text-muted text-xs truncate">{p.description}</p>}
+                  <p className="text-primary font-black font-display">{p.price} <span className="text-xs text-text-muted font-bold">RWF</span></p>
+                  <div className="flex gap-3 mt-1">
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${p.stock_quantity < 10 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                      {t('stock')}: {p.stock_quantity}
+                    </span>
+                    <span className="text-xs font-bold text-text-muted">Max: {p.max_per_customer}</span>
+                  </div>
+                </div>
+                <button onClick={() => openEditProduct(p)} type="button"
+                  className="flex-shrink-0 px-4 py-2 bg-bg border border-border-main rounded-xl text-sm font-black text-text-muted hover:text-primary hover:border-primary transition-all">
+                  Edit
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* Bottom nav — mobile */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border-main px-4 py-2 flex items-center justify-around lg:hidden">
+        <button onClick={() => setView('orders')} type="button"
+          className={`flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all ${view === 'orders' ? 'bg-primary/10 text-primary' : 'text-text-muted'}`}>
+          <ClipboardList size={22} />
+          <span className="text-xs font-black uppercase tracking-wide">{t('active_queue')}</span>
+        </button>
+        <button onClick={() => view === 'orders' ? setShowManualOrder(true) : setShowProductForm(true)} type="button"
+          className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-all -mt-5 border-4 border-bg">
+          <Plus size={26} />
+        </button>
+        <button onClick={() => setView('inventory')} type="button"
+          className={`flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all ${view === 'inventory' ? 'bg-primary/10 text-primary' : 'text-text-muted'}`}>
+          <Package size={22} />
+          <span className="text-xs font-black uppercase tracking-wide">{t('inventory')}</span>
+        </button>
+      </nav>
+
+      {/* Desktop sidebar actions */}
+      <div className="hidden lg:flex fixed bottom-6 right-6 flex-col gap-3 z-40">
+        <button onClick={() => view === 'orders' ? setShowManualOrder(true) : setShowProductForm(true)} type="button"
+          className="btn-accent px-6 py-3 shadow-xl">
+          <Plus size={20} /> {view === 'orders' ? t('add_customer') : t('add_product')}
+        </button>
+        <button onClick={exportPDF} type="button" className="btn-primary px-6 py-3 shadow-lg">
+          <Download size={20} /> {t('export_manifest')}
+        </button>
+      </div>
+
+      {/* Product Form Modal */}
+      {showProductForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-card w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[95vh] overflow-y-auto shadow-2xl border border-border-main">
+            <div className="flex items-center justify-between p-5 border-b border-border-main sticky top-0 bg-card z-10">
+              <h2 className="text-xl font-black text-primary font-display">{editingProduct ? t('edit_product') : t('add_product')}</h2>
+              <button onClick={closeProductForm} type="button" className="w-9 h-9 bg-bg rounded-xl flex items-center justify-center text-text-muted border border-border-main">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleProductSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('product_name')} *</label>
+                <input className="input-serious" value={productFormData.name}
+                  onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} required />
+              </div>
+              <div>
+                <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('description')}</label>
+                <textarea className="input-serious resize-none" rows={2} value={productFormData.description || ''}
+                  onChange={e => setProductFormData({ ...productFormData, description: e.target.value })}
+                  placeholder={t('description_placeholder')} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('price')} *</label>
+                  <input type="number" min="0" className="input-serious" value={productFormData.price}
+                    onChange={e => setProductFormData({ ...productFormData, price: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('stock')} *</label>
+                  <input type="number" min="0" className="input-serious" value={productFormData.stock_quantity}
+                    onChange={e => setProductFormData({ ...productFormData, stock_quantity: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('max_per_cust')} *</label>
+                  <input type="number" min="1" className="input-serious" value={productFormData.max_per_customer}
+                    onChange={e => setProductFormData({ ...productFormData, max_per_customer: e.target.value })} required />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('image_url')}</label>
+                {/* Show current image preview if exists */}
+                {productFormData.image_url && (
+                  <div className="relative mb-2 inline-block">
+                    <img src={productFormData.image_url} alt="preview" className="w-24 h-24 object-cover rounded-2xl border border-border-main" />
+                    <button
+                      type="button"
+                      onClick={() => setProductFormData({ ...productFormData, image_url: '' })}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-black"
+                    >✕</button>
+                  </div>
+                )}
+                <label className="flex items-center gap-3 cursor-pointer w-full p-4 border-4 border-dashed border-border-main rounded-2xl hover:border-primary transition-all bg-bg">
+                  <span className="text-2xl">📸</span>
+                  <span className="font-bold text-text-muted text-sm">
+                    {productFormData.image_url ? 'Change icyapa' : t('image_placeholder')}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      // Limit to 2MB
+                      if (file.size > 2 * 1024 * 1024) {
+                        setErrorMsg('Image too large. Max 2MB.');
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setProductFormData({ ...productFormData, image_url: reader.result });
+                        setErrorMsg('');
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+              </div>
+              {errorMsg && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-semibold">
+                  <AlertCircle size={16} /> {errorMsg}
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={saving} className="btn-accent flex-1 py-4">
+                  {saving ? <Loader2 className="animate-spin" size={20} /> : t('save_product')}
+                </button>
+                <button type="button" onClick={closeProductForm} className="btn-secondary flex-1 py-4">{t('cancel')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Order Modal */}
+      {showManualOrder && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-card w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[95vh] overflow-y-auto shadow-2xl border border-border-main">
+            <div className="flex items-center justify-between p-5 border-b border-border-main sticky top-0 bg-card z-10">
+              <h2 className="text-xl font-black text-primary font-display">{t('add_customer')}</h2>
+              <button onClick={() => setShowManualOrder(false)} type="button" className="w-9 h-9 bg-bg rounded-xl flex items-center justify-center text-text-muted border border-border-main">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleManualOrderSubmit} className="p-5 space-y-4">
+              <input className="input-serious" placeholder={t('name')} value={manualOrderData.customer_name}
+                onChange={e => setManualOrderData({ ...manualOrderData, customer_name: e.target.value })} required />
+              <input className="input-serious" placeholder={t('phone')} value={manualOrderData.customer_phone}
+                onChange={e => setManualOrderData({ ...manualOrderData, customer_phone: e.target.value })} required />
+              <div>
+                <p className="text-xs font-black text-text-muted uppercase tracking-widest mb-2">{t('products_title')}</p>
+                <div className="space-y-2 max-h-52 overflow-y-auto">
+                  {products.map(p => {
+                    const existing = manualOrderData.items.find(i => i.product_id === p.id);
+                    return (
+                      <div key={p.id} className="flex justify-between items-center bg-bg p-3 rounded-2xl border border-border-main">
+                        <div className="min-w-0 flex-1 mr-3">
+                          <p className="font-bold text-sm text-text-main truncate">{p.name}</p>
+                          <p className="text-xs text-primary font-bold">{p.price} RWF</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {existing ? (
+                            <>
+                              <button type="button" onClick={() => setManualOrderData({ ...manualOrderData, items: manualOrderData.items.map(i => i.product_id === p.id ? { ...i, quantity: i.quantity - 1 } : i).filter(i => i.quantity > 0) })}
+                                className="w-8 h-8 bg-card rounded-lg flex items-center justify-center border border-border-main"><Minus size={14} /></button>
+                              <span className="font-black w-5 text-center text-text-main">{existing.quantity}</span>
+                              <button type="button" onClick={() => setManualOrderData({ ...manualOrderData, items: manualOrderData.items.map(i => i.product_id === p.id ? { ...i, quantity: Math.min(p.max_per_customer, i.quantity + 1) } : i) })}
+                                className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white"><Plus size={14} /></button>
+                            </>
+                          ) : (
+                            <button type="button" onClick={() => setManualOrderData({ ...manualOrderData, items: [...manualOrderData.items, { product_id: p.id, quantity: 1 }] })}
+                              className="text-primary font-black text-xs uppercase tracking-wider px-3 py-1 bg-primary/10 rounded-lg">+ Add</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {errorMsg && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-semibold">
+                  <AlertCircle size={16} /> {errorMsg}
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={saving} className="btn-accent flex-1 py-4">
+                  {saving ? <Loader2 className="animate-spin" size={20} /> : t('confirm_order')}
+                </button>
+                <button type="button" onClick={() => setShowManualOrder(false)} className="btn-secondary flex-1 py-4">{t('cancel')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,7 +20,8 @@
     "i18next": "^26.0.6",
     "i18next-fs-backend": "^2.6.4",
     "jsonwebtoken": "^9.0.3",
-    "mariadb": "^3.5.2",
+    "pg": "^8.13.3",
+    "pg-hstore": "^2.3.4",
     "pdfkit": "^0.18.0",
     "sequelize": "^6.37.8"
   },
