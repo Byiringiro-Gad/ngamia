@@ -220,31 +220,107 @@ function AdminDashboard() {
 
   /* ── MAIN DASHBOARD ── */
   return (
-    <div className="min-h-screen bg-bg text-text-main flex flex-col pb-20 lg:pb-0">
-      {/* Top header — mobile & desktop */}
-      <header className="sticky top-0 z-40 bg-card border-b border-border-main px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0">N</div>
-          <div className="min-w-0">
-            <h1 className="font-black text-text-main text-base font-display leading-none truncate">
-              {view === 'orders' ? t('active_queue') : t('inventory')}
-            </h1>
-            <p className="text-text-muted text-xs font-semibold hidden sm:block">{t('manage_operations')}</p>
+    <div className="min-h-screen bg-bg text-text-main flex flex-col lg:flex-row pb-20 lg:pb-0">
+
+      {/* ── DESKTOP SIDEBAR ── */}
+      <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border-main h-screen sticky top-0 shrink-0">
+        {/* Brand */}
+        <div className="p-6 border-b border-border-main">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black">N</div>
+            <div>
+              <h1 className="font-black text-text-main font-display text-lg leading-none">Ngamia</h1>
+              <p className="text-text-muted text-xs font-semibold">{t('manage_operations')}</p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={fetchData} type="button" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
-            <RefreshCcw size={16} />
+
+        {/* Nav */}
+        <nav className="flex-1 p-4 space-y-2">
+          <button onClick={() => setView('orders')} type="button"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${view === 'orders' ? 'bg-primary text-white shadow-lg' : 'text-text-muted hover:bg-bg'}`}>
+            <ClipboardList size={18} /> {t('active_queue')}
+            {orders.filter(o => o.status === 'pending').length > 0 && (
+              <span className="ml-auto bg-accent text-white text-xs font-black px-2 py-0.5 rounded-full">
+                {orders.filter(o => o.status === 'pending').length}
+              </span>
+            )}
           </button>
-          <button onClick={exportPDF} type="button" className="hidden sm:flex w-10 h-10 bg-primary rounded-xl items-center justify-center text-white active:scale-90 transition-all">
-            <Download size={16} />
+          <button onClick={() => setView('inventory')} type="button"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${view === 'inventory' ? 'bg-primary text-white shadow-lg' : 'text-text-muted hover:bg-bg'}`}>
+            <Package size={18} /> {t('inventory')}
           </button>
-          <ThemeToggle />
-          <button onClick={() => setToken(null)} type="button" className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 active:scale-90 transition-all border border-red-100 dark:border-red-900/30">
-            <LogOut size={16} />
+        </nav>
+
+        {/* Actions */}
+        <div className="p-4 space-y-2 border-t border-border-main">
+          <button onClick={() => view === 'orders' ? setShowManualOrder(true) : setShowProductForm(true)} type="button"
+            className="w-full btn-accent py-3 text-sm">
+            <Plus size={16} /> {view === 'orders' ? t('add_customer') : t('add_product')}
+          </button>
+          <button onClick={exportPDF} type="button" className="w-full btn-primary py-3 text-sm">
+            <Download size={16} /> {t('export_manifest')}
+          </button>
+          <button onClick={fetchData} type="button"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-bg border border-border-main rounded-2xl text-text-muted text-sm font-bold hover:text-primary transition-all">
+            <RefreshCcw size={14} /> Refresh
           </button>
         </div>
-      </header>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-border-main flex items-center justify-between">
+          <div className="flex gap-1">
+            {['en', 'rw', 'fr'].map(lang => (
+              <button key={lang} type="button" onClick={() => i18n.changeLanguage(lang)}
+                className={`px-2 py-1 rounded-lg font-bold text-xs transition-all ${i18n.language === lang ? 'bg-primary text-white' : 'bg-bg border border-border-main text-text-muted'}`}>
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button onClick={() => setToken(null)} type="button"
+              className="w-8 h-8 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 border border-red-100 dark:border-red-900/30">
+              <LogOut size={14} />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ── */}
+      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
+        {/* Mobile header */}
+        <header className="lg:hidden sticky top-0 z-40 bg-card border-b border-border-main px-4 py-3 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0">N</div>
+            <h1 className="font-black text-text-main text-base font-display leading-none">
+              {view === 'orders' ? t('active_queue') : t('inventory')}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={fetchData} type="button" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
+              <RefreshCcw size={16} />
+            </button>
+            <button onClick={exportPDF} type="button" className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white active:scale-90 transition-all">
+              <Download size={16} />
+            </button>
+            <ThemeToggle />
+            <button onClick={() => setToken(null)} type="button" className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 active:scale-90 transition-all border border-red-100 dark:border-red-900/30">
+              <LogOut size={16} />
+            </button>
+          </div>
+        </header>
+
+        {/* Desktop page header */}
+        <div className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-border-main bg-card">
+          <div>
+            <h2 className="text-2xl font-black text-text-main font-display">
+              {view === 'orders' ? t('active_queue') : t('inventory')}
+            </h2>
+            <p className="text-text-muted text-sm">{new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+          {loading && <Loader2 className="animate-spin text-primary" size={20} />}
+        </div>
 
       {errorMsg && (
         <div className="mx-4 mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl flex items-center justify-between gap-3 text-sm font-semibold">
@@ -347,8 +423,8 @@ function AdminDashboard() {
         )}
       </main>
 
-      {/* Bottom nav — mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border-main px-4 py-2 flex items-center justify-around lg:hidden">
+      {/* Bottom nav — mobile only */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border-main px-4 py-2 flex items-center justify-around">
         <button onClick={() => setView('orders')} type="button"
           className={`flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all ${view === 'orders' ? 'bg-primary/10 text-primary' : 'text-text-muted'}`}>
           <ClipboardList size={22} />
@@ -365,16 +441,7 @@ function AdminDashboard() {
         </button>
       </nav>
 
-      {/* Desktop sidebar actions */}
-      <div className="hidden lg:flex fixed bottom-6 right-6 flex-col gap-3 z-40">
-        <button onClick={() => view === 'orders' ? setShowManualOrder(true) : setShowProductForm(true)} type="button"
-          className="btn-accent px-6 py-3 shadow-xl">
-          <Plus size={20} /> {view === 'orders' ? t('add_customer') : t('add_product')}
-        </button>
-        <button onClick={exportPDF} type="button" className="btn-primary px-6 py-3 shadow-lg">
-          <Download size={20} /> {t('export_manifest')}
-        </button>
-      </div>
+      </div> {/* end main content */}
 
       {/* Product Form Modal */}
       {showProductForm && (
