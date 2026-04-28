@@ -29,6 +29,11 @@ const Product = sequelize.define('Product', {
     allowNull: false,
     defaultValue: 5
   },
+  category: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'General'
+  },
   image_url: {
     type: DataTypes.TEXT,   // TEXT to store base64 encoded images
     allowNull: true

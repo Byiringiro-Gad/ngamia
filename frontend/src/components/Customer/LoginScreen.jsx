@@ -27,7 +27,7 @@ function LoginScreen({ customer, setCustomer, onBack, onStart, loading, t }) {
               className="input-serious"
               value={customer.name}
               onChange={(e) => setCustomer({...customer, name: e.target.value})}
-              placeholder="Ex: Jean"
+              placeholder={t('name_placeholder')}
             />
           </div>
           <div className="space-y-3">
@@ -38,7 +38,7 @@ function LoginScreen({ customer, setCustomer, onBack, onStart, loading, t }) {
               className="input-serious"
               value={customer.phone}
               onChange={(e) => setCustomer({...customer, phone: e.target.value})}
-              placeholder="07..."
+              placeholder={t('phone_placeholder')}
               type="tel"
             />
           </div>

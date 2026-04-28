@@ -7,6 +7,7 @@ const productSchema = z.object({
     price: z.union([z.number(), z.string()]).transform((val) => parseFloat(val)),
     stock_quantity: z.union([z.number(), z.string()]).transform((val) => parseInt(val)),
     max_per_customer: z.union([z.number(), z.string()]).transform((val) => parseInt(val)).default(5),
+    category: z.string().trim().min(2, 'Category must be at least 2 characters').default('General'),
     image_url: z.string().optional(),
   }),
 });

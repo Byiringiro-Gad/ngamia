@@ -4,9 +4,11 @@ import axios from 'axios';
 import {
   Package, ClipboardList, Download, RefreshCcw,
   Check, Clock, Lock, LogOut, Loader2, Sun, Moon,
-  Plus, Trash2, UserPlus, Minus, ArrowLeft, AlertCircle, X
+  Plus, Trash2, Minus, ArrowLeft, AlertCircle, X,
+  Tag, CreditCard
 } from 'lucide-react';
 import { useTheme } from './ThemeContext';
+import { SkeletonOrder, SkeletonProduct } from './components/Skeletons';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const BASE_URL = API_URL.replace('/api', '');
@@ -22,7 +24,7 @@ const ThemeToggle = () => {
   );
 };
 
-const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: '', max_per_customer: '', image_url: '' };
+const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: '', max_per_customer: '', category: 'General', image_url: '' };
 
 function AdminDashboard() {
   const { t, i18n } = useTranslation();
@@ -50,14 +52,14 @@ function AdminDashboard() {
   useEffect(() => {
     if (!token) return;
     const interval = setInterval(() => {
-      fetchData();
+      fetchData(false); // background refresh without full loading state
     }, 15000);
     return () => clearInterval(interval);
   }, [token]);
 
-  const fetchData = async () => {
+  const fetchData = async (showFullLoading = true) => {
     try {
-      setLoading(true);
+      if (showFullLoading) setLoading(true);
       const cfg = { headers: { Authorization: `Bearer ${token}` } };
       const [ordRes, prodRes] = await Promise.all([
         axios.get(`${API_URL}/orders`, cfg),
@@ -72,7 +74,7 @@ function AdminDashboard() {
         setErrorMsg(err.response?.data?.error || 'Failed to load dashboard data');
       }
     } finally {
-      setLoading(false);
+      if (showFullLoading) setLoading(false);
     }
   };
 
@@ -108,6 +110,8 @@ function AdminDashboard() {
       formData.append('price', productFormData.price);
       formData.append('stock_quantity', productFormData.stock_quantity);
       formData.append('max_per_customer', productFormData.max_per_customer);
+      formData.append('category', productFormData.category);
+      formData.append('image_url', productFormData.image_url || '');
       
       if (imageFile) {
         formData.append('image', imageFile);
@@ -152,14 +156,14 @@ function AdminDashboard() {
     if (!window.confirm(t('confirm_remove'))) return;
     try {
       await axios.delete(`${API_URL}/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
+      fetchData(false);
     } catch { setErrorMsg('Failed to remove order'); }
   };
 
   const updateStatus = async (id, status) => {
     try {
       await axios.patch(`${API_URL}/orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
+      fetchData(false);
     } catch { setErrorMsg('Update failed'); }
   };
 
@@ -180,7 +184,7 @@ function AdminDashboard() {
 
   const openEditProduct = (p) => {
     setEditingProduct(p);
-    setProductFormData({ ...p, description: p.description || '' });
+    setProductFormData({ ...p, description: p.description || '', category: p.category || 'General' });
     setImageFile(null);
     setShowProductForm(true);
   };
@@ -197,6 +201,17 @@ function AdminDashboard() {
     if (!url) return null;
     if (url.startsWith('http')) return url;
     return `${BASE_URL}${url}`;
+  };
+
+  const getCategoryIcon = (cat) => {
+    switch (cat) {
+      case 'Amabaro': return '👔';
+      case 'Ibiribwa': return '🍲';
+      case 'Ibinyobwa': return '🥤';
+      case 'Electronic': return '🔌';
+      case 'General': return '📦';
+      default: return '🏷️';
+    }
   };
 
   /* ── LOGIN SCREEN ── */
@@ -283,7 +298,7 @@ function AdminDashboard() {
           <button onClick={exportPDF} type="button" className="w-full btn-primary py-3 text-sm">
             <Download size={16} /> {t('export_manifest')}
           </button>
-          <button onClick={fetchData} type="button"
+          <button onClick={() => fetchData(true)} type="button"
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-bg border border-border-main rounded-2xl text-text-muted text-sm font-bold hover:text-primary transition-all">
             <RefreshCcw size={14} /> Refresh
           </button>
@@ -317,7 +332,7 @@ function AdminDashboard() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={fetchData} type="button" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
+            <button onClick={() => fetchData(true)} type="button" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
               <RefreshCcw size={16} />
             </button>
             <button onClick={exportPDF} type="button" className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white active:scale-90 transition-all">
@@ -348,18 +363,22 @@ function AdminDashboard() {
       )}
 
       <main className="flex-1 overflow-y-auto px-4 py-4">
-        {view === 'orders' && (
+        {loading && orders.length === 0 ? (
+          <div className="space-y-4 max-w-2xl mx-auto">
+            <SkeletonOrder />
+            <SkeletonOrder />
+            <SkeletonOrder />
+          </div>
+        ) : view === 'orders' ? (
           <div className="space-y-3 max-w-2xl mx-auto">
-            {loading && orders.length === 0 ? (
-              <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" size={40} /></div>
-            ) : orders.length === 0 ? (
+            {orders.length === 0 ? (
               <div className="text-center py-16 text-text-muted">
                 <ClipboardList size={48} className="mx-auto mb-3 opacity-30" />
                 <p className="font-bold text-sm uppercase tracking-widest">No orders yet</p>
               </div>
             ) : orders.map(order => (
-              <div key={order.id} className="card-serious p-4 border-l-4 border-l-primary">
-                <div className="flex items-start justify-between gap-3 mb-3">
+              <div key={order.id} className="card-serious p-4 border-l-4 border-l-primary relative overflow-hidden">
+                <div className="flex items-start justify-between gap-3 mb-3 relative z-10">
                   <div className="flex items-center gap-3">
                     <span className="text-4xl font-black text-primary font-display leading-none">#{order.queue_number}</span>
                     <div>
@@ -375,35 +394,47 @@ function AdminDashboard() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 mb-3">
+
+                <div className="flex flex-wrap gap-2 mb-4">
                   {order.OrderItems.map(item => (
                     <span key={item.id} className="bg-bg border border-border-main px-3 py-1 rounded-xl text-xs font-black text-text-main uppercase tracking-wide">
                       {item.quantity}× {item.Product.name}
                     </span>
                   ))}
                 </div>
-                {order.status === 'pending' ? (
-                  <div className="flex gap-2">
-                    <button onClick={() => updateStatus(order.id, 'picked_up')} type="button"
-                      className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-black flex items-center justify-center gap-2 text-sm active:scale-95 transition-all">
-                      <Check size={18} /> {t('complete')}
-                    </button>
-                    <button onClick={() => removeOrder(order.id)} type="button"
-                      className="w-12 h-12 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-100 dark:border-red-900/30 active:scale-95 transition-all">
-                      <Trash2 size={18} />
-                    </button>
+
+                <div className="flex items-center justify-between pt-3 border-t border-dashed border-border-main">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-primary/10 text-primary p-2 rounded-xl">
+                      <CreditCard size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-text-muted font-black uppercase tracking-widest leading-none mb-1">{t('total_to_pay')}</p>
+                      <p className="text-xl font-black text-text-main font-display leading-none">{parseFloat(order.total_price).toLocaleString()} RWF</p>
+                    </div>
                   </div>
-                ) : (
-                  <span className={`inline-block px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest ${order.status === 'picked_up' ? 'bg-bg text-text-muted border border-border-main' : 'bg-red-600 text-white'}`}>
-                    {order.status === 'picked_up' ? t('complete') : t('missed')}
-                  </span>
-                )}
+
+                  {order.status === 'pending' ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => updateStatus(order.id, 'picked_up')} type="button"
+                        className="bg-green-600 text-white px-6 py-3 rounded-2xl font-black flex items-center justify-center gap-2 text-sm active:scale-95 transition-all shadow-lg shadow-green-600/20">
+                        <Check size={18} /> {t('complete')}
+                      </button>
+                      <button onClick={() => removeOrder(order.id)} type="button"
+                        className="w-12 h-12 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-100 dark:border-red-900/30 active:scale-95 transition-all">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`inline-block px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest ${order.status === 'picked_up' ? 'bg-bg text-text-muted border border-border-main' : 'bg-red-600 text-white'}`}>
+                      {order.status === 'picked_up' ? t('complete') : t('missed')}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-        )}
-
-        {view === 'inventory' && (
+        ) : (
           <div className="space-y-3 max-w-2xl mx-auto">
             {products.length === 0 ? (
               <div className="text-center py-16 text-text-muted">
@@ -420,8 +451,13 @@ function AdminDashboard() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-black text-text-main font-display truncate">{p.name}</p>
-                  {p.description && <p className="text-text-muted text-xs truncate">{p.description}</p>}
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-black text-text-main font-display truncate">{p.name}</p>
+                    <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-widest flex items-center gap-1">
+                      {getCategoryIcon(p.category)} {p.category}
+                    </span>
+                  </div>
+                  {p.description && <p className="text-text-muted text-xs truncate mb-1">{p.description}</p>}
                   <p className="text-primary font-black font-display">{p.price} <span className="text-xs text-text-muted font-bold">RWF</span></p>
                   <div className="flex gap-3 mt-1">
                     <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${p.stock_quantity < 10 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
@@ -469,10 +505,26 @@ function AdminDashboard() {
               </button>
             </div>
             <form onSubmit={handleProductSubmit} className="p-5 space-y-4">
-              <div>
-                <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('product_name')} *</label>
-                <input className="input-serious" value={productFormData.name}
-                  onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} required />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('product_name')} *</label>
+                  <input className="input-serious" value={productFormData.name}
+                    onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('category')} *</label>
+                  <select 
+                    className="input-serious" 
+                    value={productFormData.category}
+                    onChange={e => setProductFormData({ ...productFormData, category: e.target.value })}
+                  >
+                    <option value="General">General</option>
+                    <option value="Amabaro">Amabaro (Clothes)</option>
+                    <option value="Ibiribwa">Ibiribwa (Food)</option>
+                    <option value="Ibinyobwa">Ibinyobwa (Drinks)</option>
+                    <option value="Electronic">Electronic</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('description')}</label>

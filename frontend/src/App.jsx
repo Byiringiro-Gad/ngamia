@@ -25,7 +25,10 @@ function CustomerApp() {
     try { return JSON.parse(sessionStorage.getItem('ngamia_customer')) || { name: '', phone: '' }; }
     catch { return { name: '', phone: '' }; }
   });
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('ngamia_products_cache')) || []; }
+    catch { return []; }
+  });
   const [cart, setCartRaw] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('ngamia_cart')) || {}; }
     catch { return {}; }
@@ -53,9 +56,10 @@ function CustomerApp() {
 
   const fetchProducts = async () => {
     try {
-      setLoading(true);
+      if (products.length === 0) setLoading(true);
       const res = await axios.get(`${API_URL}/products`);
       setProducts(res.data);
+      sessionStorage.setItem('ngamia_products_cache', JSON.stringify(res.data));
     } catch (err) {
       console.error(err);
     } finally {

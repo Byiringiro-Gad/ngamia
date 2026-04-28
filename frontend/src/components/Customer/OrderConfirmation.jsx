@@ -2,9 +2,18 @@ import React from 'react';
 import { ArrowLeft, ShoppingBag, Minus, Plus, X, Trash2, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL = API_URL.replace('/api', '');
+
 function OrderConfirmation({ products, cart, addToCart, removeFromCart, clearCart, onBack, onOrder, loading, error, t }) {
   const cartItems = products.filter(p => cart[p.id]);
   const totalPrice = cartItems.reduce((acc, p) => acc + (p.price * cart[p.id]), 0);
+
+  const getFullImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `${BASE_URL}${url}`;
+  };
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -23,7 +32,7 @@ function OrderConfirmation({ products, cart, addToCart, removeFromCart, clearCar
         {cartItems.map(p => (
           <div key={p.id} className="card-serious p-4 flex items-center gap-4">
             {p.image_url ? (
-              <img src={p.image_url} className="w-14 h-14 object-cover rounded-2xl flex-shrink-0 border border-border-main" alt={p.name} />
+              <img src={getFullImageUrl(p.image_url)} className="w-14 h-14 object-cover rounded-2xl flex-shrink-0 border border-border-main" alt={p.name} />
             ) : (
               <div className="w-14 h-14 bg-bg rounded-2xl flex items-center justify-center text-text-muted flex-shrink-0 border-2 border-dashed border-border-main">
                 <ShoppingBag size={20} />
