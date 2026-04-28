@@ -1,5 +1,6 @@
 const { Product } = require('../models');
 const { Op } = require('sequelize');
+const StorageService = require('../services/StorageService');
 
 // Customers — only products with stock > 0
 exports.getAllProducts = async (req, res) => {
@@ -36,7 +37,13 @@ exports.getProductById = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const productData = { ...req.body };
+    
+    if (req.file) {
+      productData.image_url = await StorageService.uploadImage(req.file);
+    }
+
+    const product = await Product.create(productData);
     res.status(201).json(product);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -47,7 +54,18 @@ exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
-    await product.update(req.body);
+
+    const productData = { ...req.body };
+
+    if (req.file) {
+      // Delete old image if it exists
+      if (product.image_url) {
+        await StorageService.deleteImage(product.image_url);
+      }
+      productData.image_url = await StorageService.uploadImage(req.file);
+    }
+
+    await product.update(productData);
     res.json(product);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -58,6 +76,11 @@ exports.deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
+    
+    if (product.image_url) {
+      await StorageService.deleteImage(product.image_url);
+    }
+
     await product.destroy();
     res.json({ message: 'Product deleted' });
   } catch (error) {

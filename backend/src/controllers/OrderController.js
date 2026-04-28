@@ -45,11 +45,7 @@ exports.createOrder = async (req, res) => {
     const language = req.body.language || 'en';
     const customer_name = normalizeCustomerName(req.body.customer_name);
     const customer_phone = normalizeCustomerPhone(req.body.customer_phone);
-    const items = Array.isArray(req.body.items) ? req.body.items : [];
-
-    if (!customer_name || !customer_phone || items.length === 0) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    const items = req.body.items;
 
     const existingOrder = await findActiveOrder({ customer_name, customer_phone });
     if (existingOrder) {

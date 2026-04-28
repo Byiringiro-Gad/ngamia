@@ -9,6 +9,7 @@ import {
 import { useTheme } from './ThemeContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL = API_URL.replace('/api', '');
 
 const ThemeToggle = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -35,6 +36,7 @@ function AdminDashboard() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productFormData, setProductFormData] = useState(EMPTY_PRODUCT);
+  const [imageFile, setImageFile] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showManualOrder, setShowManualOrder] = useState(false);
   const [manualOrderData, setManualOrderData] = useState({ customer_name: '', customer_phone: '', items: [] });
@@ -45,12 +47,11 @@ function AdminDashboard() {
     }
   }, [token]);
 
-  // Separate interval that always has fresh token reference
   useEffect(() => {
     if (!token) return;
     const interval = setInterval(() => {
       fetchData();
-    }, 15000); // refresh every 15 seconds
+    }, 15000);
     return () => clearInterval(interval);
   }, [token]);
 
@@ -94,16 +95,34 @@ function AdminDashboard() {
     try {
       setSaving(true);
       setErrorMsg('');
-      const cfg = { headers: { Authorization: `Bearer ${token}` } };
-      if (editingProduct) {
-        await axios.put(`${API_URL}/products/${editingProduct.id}`, productFormData, cfg);
-      } else {
-        await axios.post(`${API_URL}/products`, productFormData, cfg);
+      const cfg = { 
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        } 
+      };
+
+      const formData = new FormData();
+      formData.append('name', productFormData.name);
+      formData.append('description', productFormData.description || '');
+      formData.append('price', productFormData.price);
+      formData.append('stock_quantity', productFormData.stock_quantity);
+      formData.append('max_per_customer', productFormData.max_per_customer);
+      
+      if (imageFile) {
+        formData.append('image', imageFile);
       }
-      // Close form immediately on success
+
+      if (editingProduct) {
+        await axios.put(`${API_URL}/products/${editingProduct.id}`, formData, cfg);
+      } else {
+        await axios.post(`${API_URL}/products`, formData, cfg);
+      }
+      
       setShowProductForm(false);
       setEditingProduct(null);
       setProductFormData(EMPTY_PRODUCT);
+      setImageFile(null);
       fetchData();
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Failed to save product');
@@ -162,6 +181,7 @@ function AdminDashboard() {
   const openEditProduct = (p) => {
     setEditingProduct(p);
     setProductFormData({ ...p, description: p.description || '' });
+    setImageFile(null);
     setShowProductForm(true);
   };
 
@@ -169,7 +189,14 @@ function AdminDashboard() {
     setShowProductForm(false);
     setEditingProduct(null);
     setProductFormData(EMPTY_PRODUCT);
+    setImageFile(null);
     setErrorMsg('');
+  };
+
+  const getFullImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `${BASE_URL}${url}`;
   };
 
   /* ── LOGIN SCREEN ── */
@@ -218,13 +245,10 @@ function AdminDashboard() {
     );
   }
 
-  /* ── MAIN DASHBOARD ── */
   return (
     <div className="min-h-screen bg-bg text-text-main flex flex-col lg:flex-row pb-20 lg:pb-0">
 
-      {/* ── DESKTOP SIDEBAR ── */}
       <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border-main h-screen sticky top-0 shrink-0">
-        {/* Brand */}
         <div className="p-6 border-b border-border-main">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black">N</div>
@@ -235,7 +259,6 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 p-4 space-y-2">
           <button onClick={() => setView('orders')} type="button"
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${view === 'orders' ? 'bg-primary text-white shadow-lg' : 'text-text-muted hover:bg-bg'}`}>
@@ -252,7 +275,6 @@ function AdminDashboard() {
           </button>
         </nav>
 
-        {/* Actions */}
         <div className="p-4 space-y-2 border-t border-border-main">
           <button onClick={() => view === 'orders' ? setShowManualOrder(true) : setShowProductForm(true)} type="button"
             className="w-full btn-accent py-3 text-sm">
@@ -267,7 +289,6 @@ function AdminDashboard() {
           </button>
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-border-main flex items-center justify-between">
           <div className="flex gap-1">
             {['en', 'rw', 'fr'].map(lang => (
@@ -287,9 +308,7 @@ function AdminDashboard() {
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT ── */}
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
-        {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-40 bg-card border-b border-border-main px-4 py-3 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0">N</div>
@@ -311,7 +330,6 @@ function AdminDashboard() {
           </div>
         </header>
 
-        {/* Desktop page header */}
         <div className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-border-main bg-card">
           <div>
             <h2 className="text-2xl font-black text-text-main font-display">
@@ -329,7 +347,6 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* Content */}
       <main className="flex-1 overflow-y-auto px-4 py-4">
         {view === 'orders' && (
           <div className="space-y-3 max-w-2xl mx-auto">
@@ -396,7 +413,7 @@ function AdminDashboard() {
             ) : products.map(p => (
               <div key={p.id} className="card-serious p-4 flex items-center gap-4">
                 {p.image_url ? (
-                  <img src={p.image_url} className="w-16 h-16 object-cover rounded-2xl flex-shrink-0 border border-border-main" alt={p.name} />
+                  <img src={getFullImageUrl(p.image_url)} className="w-16 h-16 object-cover rounded-2xl flex-shrink-0 border border-border-main" alt={p.name} />
                 ) : (
                   <div className="w-16 h-16 bg-bg rounded-2xl flex items-center justify-center text-text-muted flex-shrink-0 border-2 border-dashed border-border-main">
                     <Package size={24} />
@@ -423,7 +440,6 @@ function AdminDashboard() {
         )}
       </main>
 
-      {/* Bottom nav — mobile only */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border-main px-4 py-2 flex items-center justify-around">
         <button onClick={() => setView('orders')} type="button"
           className={`flex flex-col items-center gap-1 px-5 py-2 rounded-2xl transition-all ${view === 'orders' ? 'bg-primary/10 text-primary' : 'text-text-muted'}`}>
@@ -441,9 +457,8 @@ function AdminDashboard() {
         </button>
       </nav>
 
-      </div> {/* end main content */}
+      </div>
 
-      {/* Product Form Modal */}
       {showProductForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-card w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[95vh] overflow-y-auto shadow-2xl border border-border-main">
@@ -483,14 +498,20 @@ function AdminDashboard() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('image_url')}</label>
-                {/* Show current image preview if exists */}
-                {productFormData.image_url && (
+                <label className="text-xs font-black text-text-muted uppercase tracking-widest mb-1 block">{t('image')}</label>
+                {(productFormData.image_url || imageFile) && (
                   <div className="relative mb-2 inline-block">
-                    <img src={productFormData.image_url} alt="preview" className="w-24 h-24 object-cover rounded-2xl border border-border-main" />
+                    <img 
+                      src={imageFile ? URL.createObjectURL(imageFile) : getFullImageUrl(productFormData.image_url)} 
+                      alt="preview" 
+                      className="w-24 h-24 object-cover rounded-2xl border border-border-main" 
+                    />
                     <button
                       type="button"
-                      onClick={() => setProductFormData({ ...productFormData, image_url: '' })}
+                      onClick={() => {
+                        setProductFormData({ ...productFormData, image_url: '' });
+                        setImageFile(null);
+                      }}
                       className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-black"
                     >✕</button>
                   </div>
@@ -498,7 +519,7 @@ function AdminDashboard() {
                 <label className="flex items-center gap-3 cursor-pointer w-full p-4 border-4 border-dashed border-border-main rounded-2xl hover:border-primary transition-all bg-bg">
                   <span className="text-2xl">📸</span>
                   <span className="font-bold text-text-muted text-sm">
-                    {productFormData.image_url ? 'Change icyapa' : t('image_placeholder')}
+                    {productFormData.image_url || imageFile ? 'Change icyapa' : t('image_placeholder')}
                   </span>
                   <input
                     type="file"
@@ -507,17 +528,12 @@ function AdminDashboard() {
                     onChange={e => {
                       const file = e.target.files[0];
                       if (!file) return;
-                      // Limit to 2MB
                       if (file.size > 2 * 1024 * 1024) {
                         setErrorMsg('Image too large. Max 2MB.');
                         return;
                       }
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setProductFormData({ ...productFormData, image_url: reader.result });
-                        setErrorMsg('');
-                      };
-                      reader.readAsDataURL(file);
+                      setImageFile(file);
+                      setErrorMsg('');
                     }}
                   />
                 </label>
@@ -538,7 +554,6 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* Manual Order Modal */}
       {showManualOrder && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-card w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[95vh] overflow-y-auto shadow-2xl border border-border-main">
