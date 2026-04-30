@@ -11,10 +11,10 @@ const api = axios.create({
   timeout: 10000, // default: 10s for writes
 });
 
-// Override timeout for GET requests to 5s
+// Override timeout for GET requests to 12s (Neon serverless DB can take 3-5s to wake)
 api.interceptors.request.use((config) => {
   if (config.method === 'get' && !config._timeoutOverride) {
-    config.timeout = 5000;
+    config.timeout = 12000;
   }
   return config;
 });

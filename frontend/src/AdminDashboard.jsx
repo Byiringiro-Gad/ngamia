@@ -5,7 +5,7 @@ import {
   Package, ClipboardList, Download, RefreshCcw,
   Check, Clock, Lock, LogOut, Loader2, Sun, Moon,
   Plus, Trash2, Minus, ArrowLeft, AlertCircle, X,
-  Tag, CreditCard, RotateCcw
+  Tag, CreditCard, RotateCcw, ShieldAlert
 } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 import { SkeletonOrder, SkeletonProduct } from './components/Skeletons';
@@ -22,6 +22,34 @@ const ThemeToggle = () => {
     </button>
   );
 };
+
+// Custom confirmation modal — replaces all window.confirm() calls
+function ConfirmModal({ open, title, message, confirmLabel, danger, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+      <div className="bg-card rounded-3xl shadow-2xl border border-border-main w-full max-w-sm p-6 space-y-5">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto ${danger ? 'bg-red-100 dark:bg-red-900/30' : 'bg-primary/10'}`}>
+          <ShieldAlert size={24} className={danger ? 'text-red-500' : 'text-primary'} />
+        </div>
+        <div className="text-center space-y-2">
+          <h3 className="font-black text-text-main text-lg font-display">{title}</h3>
+          <p className="text-text-muted text-sm leading-relaxed">{message}</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onCancel} type="button"
+            className="flex-1 py-3 rounded-2xl border-2 border-border-main font-black text-text-muted text-sm hover:border-primary hover:text-primary transition-all">
+            Cancel
+          </button>
+          <button onClick={onConfirm} type="button"
+            className={`flex-1 py-3 rounded-2xl font-black text-sm text-white transition-all active:scale-95 ${danger ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'}`}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: '', max_per_customer: '', category: 'General', image_url: '' };
 
@@ -42,6 +70,8 @@ function AdminDashboard() {
   const [errorMsg, setErrorMsg] = useState('');
   const [showManualOrder, setShowManualOrder] = useState(false);
   const [manualOrderData, setManualOrderData] = useState({ customer_name: '', customer_phone: '', items: [] });
+  // Custom confirm modal state
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', confirmLabel: '', danger: false, onConfirm: null });
 
   useEffect(() => {
     if (token) {
@@ -152,12 +182,23 @@ function AdminDashboard() {
     }
   };
 
-  const removeOrder = async (id) => {
-    if (!window.confirm(t('confirm_remove'))) return;
-    try {
-      await api.delete(`/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData(false);
-    } catch { setErrorMsg('Failed to remove order'); }
+  const showConfirm = (opts) => setConfirmModal({ open: true, ...opts });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false, onConfirm: null }));
+
+  const removeOrder = (id) => {
+    showConfirm({
+      title: 'Remove Order',
+      message: 'Are you sure you want to remove this order from the queue? Stock will be restored.',
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        closeConfirm();
+        try {
+          await api.delete(`/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          fetchData(false);
+        } catch { setErrorMsg('Failed to remove order'); }
+      },
+    });
   };
 
   const updateStatus = async (id, status) => {
@@ -183,22 +224,35 @@ function AdminDashboard() {
     } catch { setErrorMsg('Export failed'); }
   };
 
-  const handleResetAllOrders = async () => {
-    const confirmed = window.confirm(t('confirm_reset_orders'));
-    if (!confirmed) return;
-    // Double-confirm for a destructive action
-    const doubleConfirmed = window.confirm(t('confirm_reset_orders_final'));
-    if (!doubleConfirmed) return;
-    try {
-      setResetting(true);
-      setErrorMsg('');
-      await api.delete(`/admin/orders/reset`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData(false);
-    } catch (err) {
-      setErrorMsg(err.response?.data?.error || 'Failed to reset orders');
-    } finally {
-      setResetting(false);
-    }
+  const handleResetAllOrders = () => {
+    showConfirm({
+      title: t('reset_all_orders'),
+      message: t('confirm_reset_orders'),
+      confirmLabel: t('reset_all_orders'),
+      danger: true,
+      onConfirm: () => {
+        // Second confirmation for this destructive action
+        showConfirm({
+          title: t('reset_all_orders'),
+          message: t('confirm_reset_orders_final'),
+          confirmLabel: 'Yes, delete everything',
+          danger: true,
+          onConfirm: async () => {
+            closeConfirm();
+            try {
+              setResetting(true);
+              setErrorMsg('');
+              await api.delete(`/admin/orders/reset`, { headers: { Authorization: `Bearer ${token}` } });
+              fetchData(false);
+            } catch (err) {
+              setErrorMsg(err.response?.data?.error || 'Failed to reset orders');
+            } finally {
+              setResetting(false);
+            }
+          },
+        });
+      },
+    });
   };
 
   const openEditProduct = (p) => {
@@ -318,12 +372,12 @@ function AdminDashboard() {
             <Download size={16} /> {t('export_manifest')}
           </button>
           <button onClick={() => fetchData(true)} type="button"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-bg border border-border-main rounded-2xl text-text-muted text-sm font-bold hover:text-primary transition-all">
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-2xl text-primary text-sm font-bold hover:bg-primary/20 transition-all">
             <RefreshCcw size={14} /> Refresh
           </button>
           {view === 'orders' && (
             <button onClick={handleResetAllOrders} disabled={resetting} type="button"
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-red-500 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all disabled:opacity-50">
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-2xl text-white text-sm font-bold transition-all disabled:opacity-50 shadow-sm">
               {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
               {t('reset_all_orders')}
             </button>
@@ -358,7 +412,8 @@ function AdminDashboard() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => fetchData(true)} type="button" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border-main text-text-muted active:scale-90 transition-all">
+            <button onClick={() => fetchData(true)} type="button"
+              className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/30 text-primary active:scale-90 transition-all">
               <RefreshCcw size={16} />
             </button>
             <button onClick={exportPDF} type="button" className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white active:scale-90 transition-all">
@@ -366,7 +421,7 @@ function AdminDashboard() {
             </button>
             {view === 'orders' && (
               <button onClick={handleResetAllOrders} disabled={resetting} type="button"
-                className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 active:scale-90 transition-all border border-red-200 dark:border-red-800 disabled:opacity-50">
+                className="w-10 h-10 bg-red-500 hover:bg-red-600 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all disabled:opacity-50 shadow-sm">
                 {resetting ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
               </button>
             )}
@@ -419,10 +474,10 @@ function AdminDashboard() {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-text-muted font-bold uppercase tracking-widest">{t('pickup_scheduled')}</p>
+                    <p className="text-xs text-text-muted font-bold uppercase tracking-widest">{t('order_time')}</p>
                     <p className="font-black text-text-main font-display flex items-center gap-1 justify-end">
                       <Clock size={14} className="text-accent" />
-                      {new Date(order.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
@@ -697,6 +752,16 @@ function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        danger={confirmModal.danger}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

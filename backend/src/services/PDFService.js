@@ -1,16 +1,10 @@
 const PDFDocument = require('pdfkit');
 const { Order, OrderItem, Product } = require('../models');
-const { Op } = require('sequelize');
 
 class PDFService {
   static async generateDailyManifest(res) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
+    // Export ALL orders (no date filter) — sorted by queue number ascending
     const orders = await Order.findAll({
-      where: { createdAt: { [Op.between]: [startOfDay, endOfDay] } },
       include: [{ model: OrderItem, include: [Product] }],
       order: [['queue_number', 'ASC']]
     });
@@ -53,7 +47,7 @@ class PDFService {
     doc.text('CUSTOMER', cols.customer, y + 6);
     doc.text('PHONE', cols.phone, y + 6);
     doc.text('ITEMS (QTY × UNIT PRICE)', cols.items, y + 6);
-    doc.text('PICKUP', cols.pickup, y + 6);
+    doc.text('ORDER TIME', cols.pickup, y + 6);
     doc.text('TOTAL', cols.total, y + 6);
 
     y += 22;
@@ -81,7 +75,7 @@ class PDFService {
         doc.text('CUSTOMER', cols.customer, y + 6);
         doc.text('PHONE', cols.phone, y + 6);
         doc.text('ITEMS (QTY × UNIT PRICE)', cols.items, y + 6);
-        doc.text('PICKUP', cols.pickup, y + 6);
+        doc.text('ORDER TIME', cols.pickup, y + 6);
         doc.text('TOTAL', cols.total, y + 6);
         y += 22;
       }
@@ -103,7 +97,7 @@ class PDFService {
       doc.text(order.customer_phone, cols.phone, y + 8, { width: 95 });
       doc.text(itemsText, cols.items, y + 8, { width: 155 });
       doc.text(
-        new Date(order.pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         cols.pickup, y + 8, { width: 45 }
       );
       doc.font('Helvetica-Bold').fillColor('#c0392b');

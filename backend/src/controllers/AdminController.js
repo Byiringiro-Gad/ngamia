@@ -78,9 +78,9 @@ exports.resetAllOrders = async (req, res) => {
       );
     }
 
-    // Delete all order items then all orders (cascade handles it but be explicit)
-    await OrderItem.destroy({ where: {}, truncate: true, transaction: t });
-    await Order.destroy({ where: {}, truncate: true, transaction: t });
+    // Use DELETE (not TRUNCATE) — TRUNCATE is blocked by FK constraints in Postgres
+    await OrderItem.destroy({ where: {}, transaction: t });
+    await Order.destroy({ where: {}, transaction: t });
 
     await t.commit();
     res.json({ message: 'All orders have been reset and stock has been restored.' });

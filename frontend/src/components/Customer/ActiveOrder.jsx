@@ -1,13 +1,9 @@
-import React from 'react';
-import { ArrowLeft, ArrowRight, AlertCircle, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, ArrowRight, AlertCircle, X, ShieldAlert } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
 function ActiveOrder({ order, onBack, onEdit, onCancel, error, t }) {
-  const handleCancel = () => {
-    if (window.confirm(t('confirm_cancel_order') || 'Are you sure you want to cancel this order?')) {
-      onCancel();
-    }
-  };
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -55,7 +51,10 @@ function ActiveOrder({ order, onBack, onEdit, onCancel, error, t }) {
       <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border-main p-4">
         <div className="max-w-lg mx-auto flex gap-3">
           {order.status === 'pending' && (
-            <button onClick={handleCancel} className="flex-shrink-0 w-14 h-14 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-200 dark:border-red-800 active:scale-95 transition-all">
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="flex-shrink-0 w-14 h-14 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-200 dark:border-red-800 active:scale-95 transition-all"
+            >
               <X size={22} />
             </button>
           )}
@@ -64,6 +63,35 @@ function ActiveOrder({ order, onBack, onEdit, onCancel, error, t }) {
           </button>
         </div>
       </div>
+
+      {/* Cancel confirmation — inline, no browser popup */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-3xl shadow-2xl border border-border-main w-full max-w-sm p-6 space-y-5">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto">
+              <ShieldAlert size={24} className="text-red-500" />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="font-black text-text-main text-lg font-display">{t('cancel_order')}</h3>
+              <p className="text-text-muted text-sm leading-relaxed">{t('confirm_cancel_order')}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="flex-1 py-3 rounded-2xl border-2 border-border-main font-black text-text-muted text-sm hover:border-primary hover:text-primary transition-all"
+              >
+                {t('back')}
+              </button>
+              <button
+                onClick={() => { setShowCancelConfirm(false); onCancel(); }}
+                className="flex-1 py-3 rounded-2xl bg-red-500 hover:bg-red-600 font-black text-white text-sm transition-all active:scale-95"
+              >
+                {t('cancel_order')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

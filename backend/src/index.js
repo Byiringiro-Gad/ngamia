@@ -58,9 +58,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ── Request timeout: abort slow requests after 10s ─────────────────────────────
+// ── Request timeout: abort slow requests after 15s ─────────────────────────────
+// PDF export is excluded — it streams and can legitimately take longer.
 app.use((req, res, next) => {
-  res.setTimeout(10000, () => {
+  if (req.path.includes('/export/')) return next(); // skip for streaming PDF
+  res.setTimeout(15000, () => {
     if (!res.headersSent) {
       res.status(503).json({ error: 'Request timed out. Please try again.' });
     }
