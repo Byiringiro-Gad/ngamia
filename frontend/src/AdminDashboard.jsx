@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import api, { API_URL } from './api';
 import {
   Package, ClipboardList, Download, RefreshCcw,
   Check, Clock, Lock, LogOut, Loader2, Sun, Moon,
   Plus, Trash2, Minus, ArrowLeft, AlertCircle, X,
-  Tag, CreditCard
+  Tag, CreditCard, RotateCcw
 } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 import { SkeletonOrder, SkeletonProduct } from './components/Skeletons';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const BASE_URL = API_URL.replace('/api', '');
 
 const ThemeToggle = () => {
@@ -34,6 +33,7 @@ function AdminDashboard() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [view, setView] = useState('orders');
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -62,8 +62,8 @@ function AdminDashboard() {
       if (showFullLoading) setLoading(true);
       const cfg = { headers: { Authorization: `Bearer ${token}` } };
       const [ordRes, prodRes] = await Promise.all([
-        axios.get(`${API_URL}/orders`, cfg),
-        axios.get(`${API_URL}/products/admin/all`, cfg),
+        api.get(`/orders`, cfg),
+        api.get(`/products/admin/all`, cfg),
       ]);
       setOrders(ordRes.data);
       setProducts(prodRes.data);
@@ -83,10 +83,10 @@ function AdminDashboard() {
     try {
       setSaving(true);
       setErrorMsg('');
-      const res = await axios.post(`${API_URL}/admin/login`, loginData);
+      const res = await api.post(`/admin/login`, loginData);
       setToken(res.data.token);
-    } catch {
-      setErrorMsg('Invalid username or password');
+    } catch (err) {
+      setErrorMsg(err.response?.data?.error || 'Invalid username or password');
     } finally {
       setSaving(false);
     }
@@ -118,9 +118,9 @@ function AdminDashboard() {
       }
 
       if (editingProduct) {
-        await axios.put(`${API_URL}/products/${editingProduct.id}`, formData, cfg);
+        await api.put(`/products/${editingProduct.id}`, formData, cfg);
       } else {
-        await axios.post(`${API_URL}/products`, formData, cfg);
+        await api.post(`/products`, formData, cfg);
       }
       
       setShowProductForm(false);
@@ -141,7 +141,7 @@ function AdminDashboard() {
     try {
       setSaving(true);
       setErrorMsg('');
-      await axios.post(`${API_URL}/orders`, { ...manualOrderData, language: i18n.language });
+      await api.post(`/orders`, { ...manualOrderData, language: i18n.language });
       setShowManualOrder(false);
       setManualOrderData({ customer_name: '', customer_phone: '', items: [] });
       fetchData();
@@ -155,22 +155,23 @@ function AdminDashboard() {
   const removeOrder = async (id) => {
     if (!window.confirm(t('confirm_remove'))) return;
     try {
-      await axios.delete(`${API_URL}/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await api.delete(`/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchData(false);
     } catch { setErrorMsg('Failed to remove order'); }
   };
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.patch(`${API_URL}/orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+      await api.patch(`/orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
       fetchData(false);
     } catch { setErrorMsg('Update failed'); }
   };
 
   const exportPDF = async () => {
     try {
-      const res = await axios.get(`${API_URL}/admin/export/daily`, {
-        headers: { Authorization: `Bearer ${token}` }, responseType: 'blob'
+      const res = await api.get(`/admin/export/daily`, {
+        headers: { Authorization: `Bearer ${token}` }, responseType: 'blob',
+        _timeoutOverride: true, timeout: 30000, // PDF generation can take longer
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
@@ -180,6 +181,24 @@ function AdminDashboard() {
       a.click();
       document.body.removeChild(a);
     } catch { setErrorMsg('Export failed'); }
+  };
+
+  const handleResetAllOrders = async () => {
+    const confirmed = window.confirm(t('confirm_reset_orders'));
+    if (!confirmed) return;
+    // Double-confirm for a destructive action
+    const doubleConfirmed = window.confirm(t('confirm_reset_orders_final'));
+    if (!doubleConfirmed) return;
+    try {
+      setResetting(true);
+      setErrorMsg('');
+      await api.delete(`/admin/orders/reset`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchData(false);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.error || 'Failed to reset orders');
+    } finally {
+      setResetting(false);
+    }
   };
 
   const openEditProduct = (p) => {
@@ -302,6 +321,13 @@ function AdminDashboard() {
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-bg border border-border-main rounded-2xl text-text-muted text-sm font-bold hover:text-primary transition-all">
             <RefreshCcw size={14} /> Refresh
           </button>
+          {view === 'orders' && (
+            <button onClick={handleResetAllOrders} disabled={resetting} type="button"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-red-500 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all disabled:opacity-50">
+              {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+              {t('reset_all_orders')}
+            </button>
+          )}
         </div>
 
         <div className="p-4 border-t border-border-main flex items-center justify-between">
@@ -338,6 +364,12 @@ function AdminDashboard() {
             <button onClick={exportPDF} type="button" className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white active:scale-90 transition-all">
               <Download size={16} />
             </button>
+            {view === 'orders' && (
+              <button onClick={handleResetAllOrders} disabled={resetting} type="button"
+                className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 active:scale-90 transition-all border border-red-200 dark:border-red-800 disabled:opacity-50">
+                {resetting ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+              </button>
+            )}
             <ThemeToggle />
             <button onClick={() => setToken(null)} type="button" className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-500 active:scale-90 transition-all border border-red-100 dark:border-red-900/30">
               <LogOut size={16} />

@@ -62,5 +62,11 @@
   "save_changes": "Bika impinduka",
   "no_products_category": "Nta bicuruzwa bibonetse muri iki cyiciro",
   "all_categories": "Byose",
-  "category": "Icyiciro"
+  "category": "Icyiciro",
+  "confirm_cancel_order": "Muremeza ko mushaka guhagarika iyi commande? Ntishobora gusubizwa.",
+  "cancel_order": "Hagarika commande",
+  "total_to_pay": "Igiteranyo cyo kwishyura",
+  "reset_all_orders": "Siba commande zose",
+  "confirm_reset_orders": "UMWANDITSI: Ibi bizasiba commande ZOSE kandi bisubize ibicuruzwa byose. Ntishobora gusubizwa. Muremeza?",
+  "confirm_reset_orders_final": "Kwemeza bwa nyuma: siba commande zose mu sisitemu?"
 }

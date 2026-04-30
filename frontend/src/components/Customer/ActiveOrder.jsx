@@ -1,8 +1,14 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle, X } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
-function ActiveOrder({ order, onBack, onEdit, error, t }) {
+function ActiveOrder({ order, onBack, onEdit, onCancel, error, t }) {
+  const handleCancel = () => {
+    if (window.confirm(t('confirm_cancel_order') || 'Are you sure you want to cancel this order?')) {
+      onCancel();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       <div className="sticky top-0 z-20 bg-card border-b border-border-main px-5 py-4 flex items-center justify-between shadow-sm">
@@ -47,8 +53,13 @@ function ActiveOrder({ order, onBack, onEdit, error, t }) {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border-main p-4">
-        <div className="max-w-lg mx-auto">
-          <button onClick={onEdit} className="btn-accent w-full py-4">
+        <div className="max-w-lg mx-auto flex gap-3">
+          {order.status === 'pending' && (
+            <button onClick={handleCancel} className="flex-shrink-0 w-14 h-14 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-200 dark:border-red-800 active:scale-95 transition-all">
+              <X size={22} />
+            </button>
+          )}
+          <button onClick={onEdit} className="btn-accent flex-1 py-4">
             {t('edit_order')} <ArrowRight size={20} />
           </button>
         </div>

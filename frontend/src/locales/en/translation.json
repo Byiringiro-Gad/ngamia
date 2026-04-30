@@ -62,5 +62,11 @@
   "save_changes": "Save Changes",
   "no_products_category": "No products found in this category",
   "all_categories": "All",
-  "category": "Category"
+  "category": "Category",
+  "confirm_cancel_order": "Are you sure you want to cancel this order? This cannot be undone.",
+  "cancel_order": "Cancel Order",
+  "total_to_pay": "Total to Pay",
+  "reset_all_orders": "Reset All Orders",
+  "confirm_reset_orders": "WARNING: This will permanently delete ALL orders and restore all stock. This cannot be undone. Are you sure?",
+  "confirm_reset_orders_final": "Final confirmation: delete every order in the system?"
 }

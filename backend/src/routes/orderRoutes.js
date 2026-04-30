@@ -8,6 +8,7 @@ const { orderSchema, updateOrderItemsSchema } = require('../schemas/orderSchema'
 router.post('/', validate(orderSchema), OrderController.createOrder);
 router.get('/check/:phone', OrderController.getOrderByPhone); // customer check existing order
 router.put('/:id/items', validate(updateOrderItemsSchema), OrderController.updateOrderItems);   // customer edit existing order
+router.delete('/:id/cancel', OrderController.cancelOrder); // customer cancel their own pending order
 
 // Protected Admin Routes
 router.get('/', protect, OrderController.getOrders);

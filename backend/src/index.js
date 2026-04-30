@@ -12,18 +12,32 @@ const PORT = process.env.PORT || 5000;
 // Serve static files
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
-// Global Rate Limiter: 100 requests per 15 minutes
+// ── Rate Limiters ──────────────────────────────────────────────────────────────
+// Global: 500 requests per 15 minutes — supports 20+ concurrent users comfortably
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
 });
 
-// Stricter limiter for order creation: 5 orders per 30 minutes per IP
+// Order creation: 10 per 30 minutes per IP (allows retries and edits)
 const orderLimiter = rateLimit({
   windowMs: 30 * 60 * 1000,
-  max: 5,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Order limit exceeded. Please wait before placing another order.' },
+});
+
+// Admin login: 10 attempts per 15 minutes per IP (brute-force protection)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please wait 15 minutes.' },
 });
 
 app.use(globalLimiter);
@@ -44,6 +58,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ── Request timeout: abort slow requests after 10s ─────────────────────────────
+app.use((req, res, next) => {
+  res.setTimeout(10000, () => {
+    if (!res.headersSent) {
+      res.status(503).json({ error: 'Request timed out. Please try again.' });
+    }
+  });
+  next();
+});
+
 // Basic test route
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Ngamia API is running' });
@@ -57,6 +81,8 @@ const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
+// Apply login rate limiter specifically to the login endpoint
+app.use('/api/admin/login', loginLimiter);
 
 // Sync Database and Start Server
 const startServer = async () => {

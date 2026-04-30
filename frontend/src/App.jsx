@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
+import api, { API_URL } from './api';
 import AdminDashboard from './AdminDashboard';
 import { ThemeProvider } from './ThemeContext';
 
@@ -14,8 +14,6 @@ import OrderConfirmation from './components/Customer/OrderConfirmation';
 import ActiveOrder from './components/Customer/ActiveOrder';
 import EditOrder from './components/Customer/EditOrder';
 import SuccessScreen from './components/SuccessScreen';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 function CustomerApp() {
   const { t, i18n } = useTranslation();
@@ -57,7 +55,7 @@ function CustomerApp() {
   const fetchProducts = async () => {
     try {
       if (products.length === 0) setLoading(true);
-      const res = await axios.get(`${API_URL}/products`);
+      const res = await api.get(`/products`);
       setProducts(res.data);
       sessionStorage.setItem('ngamia_products_cache', JSON.stringify(res.data));
     } catch (err) {
@@ -115,7 +113,7 @@ function CustomerApp() {
         quantity: qty
       }));
 
-      const res = await axios.post(`${API_URL}/orders`, {
+      const res = await api.post(`/orders`, {
         customer_name: customer.name,
         customer_phone: customer.phone,
         items,
@@ -145,11 +143,27 @@ function CustomerApp() {
         product_id: parseInt(id),
         quantity: qty
       }));
-      const res = await axios.put(`${API_URL}/orders/${existingOrder.id}/items`, { items });
+      const res = await api.put(`/orders/${existingOrder.id}/items`, { items });
       setExistingOrder(res.data);
       setStep('existing_order');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      await api.delete(`/orders/${existingOrder.id}/cancel`);
+      setExistingOrder(null);
+      setCart({});
+      sessionStorage.removeItem('ngamia_cart');
+      setStep('login');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to cancel order');
     } finally {
       setLoading(false);
     }
@@ -160,7 +174,7 @@ function CustomerApp() {
       setLoading(true);
       setError('');
       const params = new URLSearchParams({ name: customer.name.trim() });
-      const res = await axios.get(`${API_URL}/orders/check/${encodeURIComponent(customer.phone)}?${params.toString()}`);
+      const res = await api.get(`/orders/check/${encodeURIComponent(customer.phone)}?${params.toString()}`);
       if (res.data) {
         openExistingOrder(res.data);
       } else {
@@ -225,6 +239,7 @@ function CustomerApp() {
           order={existingOrder}
           onBack={() => setStep('login')}
           onEdit={() => setStep('edit_order')}
+          onCancel={handleCancelOrder}
           error={error}
           t={t}
         />

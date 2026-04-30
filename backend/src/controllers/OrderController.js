@@ -85,7 +85,7 @@ exports.createOrder = async (req, res) => {
       await product.save({ transaction: t });
     }
 
-    const { queue_number, pickup_time } = await QueueService.assignQueueAndSlot();
+    const { queue_number, pickup_time } = await QueueService.assignQueueAndSlot(t);
 
     const order = await Order.create({
       customer_name,
@@ -280,6 +280,36 @@ exports.deleteOrder = async (req, res) => {
 
     await order.destroy();
     res.json({ message: 'Order removed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Customer self-cancel: only allowed on pending orders, no auth required
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findByPk(id);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending orders can be cancelled' });
+    }
+
+    const orderItems = await OrderItem.findAll({ where: { order_id: id } });
+    for (const item of orderItems) {
+      const product = await Product.findByPk(item.product_id);
+      if (product) {
+        product.stock_quantity += item.quantity;
+        await product.save();
+      }
+    }
+
+    await order.destroy();
+    res.json({ message: 'Order cancelled successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

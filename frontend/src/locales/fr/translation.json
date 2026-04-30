@@ -62,5 +62,11 @@
   "save_changes": "Enregistrer les modifications",
   "no_products_category": "Aucun produit trouvé dans cette catégorie",
   "all_categories": "Tout",
-  "category": "Catégorie"
+  "category": "Catégorie",
+  "confirm_cancel_order": "Êtes-vous sûr de vouloir annuler cette commande ? Cette action est irréversible.",
+  "cancel_order": "Annuler la commande",
+  "total_to_pay": "Total à payer",
+  "reset_all_orders": "Réinitialiser toutes les commandes",
+  "confirm_reset_orders": "ATTENTION : Cela supprimera définitivement TOUTES les commandes et restaurera tous les stocks. Êtes-vous sûr ?",
+  "confirm_reset_orders_final": "Confirmation finale : supprimer toutes les commandes du système ?"
 }
