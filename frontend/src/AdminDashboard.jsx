@@ -255,6 +255,54 @@ function AdminDashboard() {
     });
   };
 
+  const deleteProduct = (id, name) => {
+    showConfirm({
+      title: t('delete_product'),
+      message: `${t('confirm_delete_product')} "${name}"?`,
+      confirmLabel: t('delete_product'),
+      danger: true,
+      onConfirm: async () => {
+        closeConfirm();
+        try {
+          await api.delete(`/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          fetchData(false);
+        } catch (err) {
+          setErrorMsg(err.response?.data?.error || 'Failed to delete product');
+        }
+      },
+    });
+  };
+
+  const handleClearAllProducts = () => {
+    showConfirm({
+      title: t('clear_all_products'),
+      message: t('confirm_clear_products'),
+      confirmLabel: t('clear_all_products'),
+      danger: true,
+      onConfirm: () => {
+        showConfirm({
+          title: t('clear_all_products'),
+          message: t('confirm_clear_products_final'),
+          confirmLabel: 'Yes, delete everything',
+          danger: true,
+          onConfirm: async () => {
+            closeConfirm();
+            try {
+              setResetting(true);
+              setErrorMsg('');
+              await api.delete(`/admin/products/clear`, { headers: { Authorization: `Bearer ${token}` } });
+              fetchData(false);
+            } catch (err) {
+              setErrorMsg(err.response?.data?.error || 'Failed to clear products');
+            } finally {
+              setResetting(false);
+            }
+          },
+        });
+      },
+    });
+  };
+
   const openEditProduct = (p) => {
     setEditingProduct(p);
     setProductFormData({ ...p, description: p.description || '', category: p.category || 'General' });
@@ -309,7 +357,7 @@ function AdminDashboard() {
           <form onSubmit={handleLogin} className="space-y-4">
             <input className="input-serious" placeholder="Username"
               value={loginData.username} onChange={e => setLoginData({ ...loginData, username: e.target.value })} required />
-            <input className="input-serious" type="password" placeholder="Password"
+            <input className="input-serious" type="password" placeholder="Password" autoComplete="new-password"
               value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} required />
             {errorMsg && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-semibold">
@@ -382,6 +430,13 @@ function AdminDashboard() {
               {t('reset_all_orders')}
             </button>
           )}
+          {view === 'inventory' && (
+            <button onClick={handleClearAllProducts} disabled={resetting} type="button"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-2xl text-white text-sm font-bold transition-all disabled:opacity-50 shadow-sm">
+              {resetting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              {t('clear_all_products')}
+            </button>
+          )}
         </div>
 
         <div className="p-4 border-t border-border-main flex items-center justify-between">
@@ -423,6 +478,12 @@ function AdminDashboard() {
               <button onClick={handleResetAllOrders} disabled={resetting} type="button"
                 className="w-10 h-10 bg-red-500 hover:bg-red-600 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all disabled:opacity-50 shadow-sm">
                 {resetting ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+              </button>
+            )}
+            {view === 'inventory' && (
+              <button onClick={handleClearAllProducts} disabled={resetting} type="button"
+                className="w-10 h-10 bg-red-500 hover:bg-red-600 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all disabled:opacity-50 shadow-sm">
+                {resetting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
               </button>
             )}
             <ThemeToggle />
@@ -556,6 +617,10 @@ function AdminDashboard() {
                 <button onClick={() => openEditProduct(p)} type="button"
                   className="flex-shrink-0 px-4 py-2 bg-bg border border-border-main rounded-xl text-sm font-black text-text-muted hover:text-primary hover:border-primary transition-all">
                   Edit
+                </button>
+                <button onClick={() => deleteProduct(p.id, p.name)} type="button"
+                  className="flex-shrink-0 w-9 h-9 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-100 transition-all active:scale-95">
+                  <Trash2 size={15} />
                 </button>
               </div>
             ))}

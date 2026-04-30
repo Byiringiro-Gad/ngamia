@@ -69,5 +69,10 @@
   "total_to_pay": "Total to Pay",
   "reset_all_orders": "Reset All Orders",
   "confirm_reset_orders": "WARNING: This will permanently delete ALL orders and restore all stock. This cannot be undone. Are you sure?",
-  "confirm_reset_orders_final": "Final confirmation: delete every order in the system?"
+  "confirm_reset_orders_final": "Final confirmation: delete every order in the system?",
+  "delete_product": "Delete Product",
+  "confirm_delete_product": "Are you sure you want to delete",
+  "clear_all_products": "Clear All Products",
+  "confirm_clear_products": "WARNING: This will permanently delete ALL products and ALL orders. This cannot be undone. Are you sure?",
+  "confirm_clear_products_final": "Final confirmation: delete every product in the system?"
 }

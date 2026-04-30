@@ -22,16 +22,10 @@ const globalLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' },
 });
 
-// Order creation: 10 per 30 minutes per IP (allows retries and edits)
-const orderLimiter = rateLimit({
-  windowMs: 30 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Order limit exceeded. Please wait before placing another order.' },
-});
-
-// Admin login: 10 attempts per 15 minutes per IP (brute-force protection)
+// Admin login: 10 attempts per 15 minutes per IP (brute-force protection only)
+// Order creation has NO per-IP limit — the duplicate-order business logic already
+// prevents a single customer from placing more than one active order.
+// A per-IP limit would block all users sharing the same network/NAT.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -41,7 +35,6 @@ const loginLimiter = rateLimit({
 });
 
 app.use(globalLimiter);
-app.use('/api/orders', orderLimiter);
 
 // Allow requests from your frontend
 const allowedOrigins = process.env.FRONTEND_URL

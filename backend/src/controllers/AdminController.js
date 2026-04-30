@@ -69,7 +69,6 @@ exports.resetAdminPassword = async (req, res) => {
 exports.resetAllOrders = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    // Restore stock for every order item in one pass
     const allItems = await OrderItem.findAll({ transaction: t });
     for (const item of allItems) {
       await Product.increment(
@@ -77,13 +76,27 @@ exports.resetAllOrders = async (req, res) => {
         { where: { id: item.product_id }, transaction: t }
       );
     }
-
-    // Use DELETE (not TRUNCATE) — TRUNCATE is blocked by FK constraints in Postgres
     await OrderItem.destroy({ where: {}, transaction: t });
     await Order.destroy({ where: {}, transaction: t });
-
     await t.commit();
     res.json({ message: 'All orders have been reset and stock has been restored.' });
+  } catch (error) {
+    await t.rollback();
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Clear all products: deletes every product (and cascades to order items).
+// Protected — admin only.
+exports.clearAllProducts = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    // OrderItems reference Products — delete items first to avoid FK violation
+    await OrderItem.destroy({ where: {}, transaction: t });
+    await Order.destroy({ where: {}, transaction: t });
+    await Product.destroy({ where: {}, transaction: t });
+    await t.commit();
+    res.json({ message: 'All products and related orders have been cleared.' });
   } catch (error) {
     await t.rollback();
     res.status(500).json({ error: error.message });

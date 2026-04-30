@@ -69,5 +69,10 @@
   "total_to_pay": "Total à payer",
   "reset_all_orders": "Réinitialiser toutes les commandes",
   "confirm_reset_orders": "ATTENTION : Cela supprimera définitivement TOUTES les commandes et restaurera tous les stocks. Êtes-vous sûr ?",
-  "confirm_reset_orders_final": "Confirmation finale : supprimer toutes les commandes du système ?"
+  "confirm_reset_orders_final": "Confirmation finale : supprimer toutes les commandes du système ?",
+  "delete_product": "Supprimer le produit",
+  "confirm_delete_product": "Êtes-vous sûr de vouloir supprimer",
+  "clear_all_products": "Effacer tous les produits",
+  "confirm_clear_products": "ATTENTION : Cela supprimera définitivement TOUS les produits et TOUTES les commandes. Êtes-vous sûr ?",
+  "confirm_clear_products_final": "Confirmation finale : supprimer tous les produits du système ?"
 }
