@@ -75,8 +75,10 @@
   "clear_all_products": "Effacer tous les produits",
   "confirm_clear_products": "ATTENTION : Cela supprimera définitivement TOUS les produits et TOUTES les commandes. Êtes-vous sûr ?",
   "confirm_clear_products_final": "Confirmation finale : supprimer tous les produits du système ?",
-  "platform_open": "Plateforme ouverte",
-  "platform_closed_label": "Plateforme fermée",
-  "platform_closed": "Nous sommes fermés",
-  "platform_closed_msg": "Les commandes ne sont pas disponibles pour le moment. Revenez plus tard."
+  "platform_open": "Système ouvert",
+  "platform_closed_label": "Système fermé",
+  "platform_closed": "Système fermé",
+  "platform_closed_msg": "Les commandes ne sont pas disponibles pour le moment. Revenez plus tard.",
+  "open_system": "Ouvrir le système",
+  "close_system": "Fermer le système"
 }

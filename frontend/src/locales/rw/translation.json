@@ -75,8 +75,10 @@
   "clear_all_products": "Siba ibicuruzwa byose",
   "confirm_clear_products": "UMWANDITSI: Ibi bizasiba ibicuruzwa BYOSE na commande ZOSE. Ntishobora gusubizwa. Muremeza?",
   "confirm_clear_products_final": "Kwemeza bwa nyuma: siba ibicuruzwa byose mu sisitemu?",
-  "platform_open": "Urubuga rufunguye",
-  "platform_closed_label": "Urubuga rwafunzwe",
-  "platform_closed": "Twarafunga",
-  "platform_closed_msg": "Gutumiza ntibishoboka ubu. Subira nyuma."
+  "platform_open": "Sisitemu ifunguye",
+  "platform_closed_label": "Sisitemu ifunzwe",
+  "platform_closed": "Sisitemu ifunzwe",
+  "platform_closed_msg": "Gutumiza ntibishoboka ubu. Subira nyuma.",
+  "open_system": "Fungura sisitemu",
+  "close_system": "Funga sisitemu"
 }

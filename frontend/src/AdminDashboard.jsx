@@ -55,7 +55,14 @@ const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: ''
 
 function AdminDashboard() {
   const { t, i18n } = useTranslation();
-  const [token, setToken] = useState(null);
+  const [token, setTokenRaw] = useState(() => localStorage.getItem('ngamia_admin_token') || null);
+
+  // Persist token to localStorage so closing the browser doesn't log you out
+  const setToken = (t) => {
+    if (t) localStorage.setItem('ngamia_admin_token', t);
+    else localStorage.removeItem('ngamia_admin_token');
+    setTokenRaw(t);
+  };
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -464,12 +471,12 @@ function AdminDashboard() {
             type="button"
             className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold transition-all border-2 ${
               platformOpen
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-100'
-                : 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400 hover:bg-orange-100'
+                ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400 hover:bg-orange-100'
+                : 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-100'
             }`}
           >
             <Power size={14} />
-            {platformOpen ? t('platform_open') : t('platform_closed_label')}
+            {platformOpen ? t('close_system') : t('open_system')}
           </button>
           {view === 'orders' && (
             <button onClick={handleResetAllOrders} disabled={resetting} type="button"
@@ -525,8 +532,8 @@ function AdminDashboard() {
               type="button"
               className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all border-2 ${
                 platformOpen
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-300 text-green-700 dark:text-green-400'
-                  : 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 text-orange-700 dark:text-orange-400'
+                  ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 text-orange-700 dark:text-orange-400'
+                  : 'bg-green-50 dark:bg-green-900/20 border-green-300 text-green-700 dark:text-green-400'
               }`}
             >
               <Power size={16} />
