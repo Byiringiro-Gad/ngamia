@@ -67,6 +67,8 @@ function Toast({ toast }) {
   );
 }
 
+const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: '', max_per_customer: '', category: 'General', image_url: '' };
+
 function AdminDashboard() {
   const { t, i18n } = useTranslation();
   const [token, setTokenRaw] = useState(() => localStorage.getItem('ngamia_admin_token') || null);

@@ -15,6 +15,28 @@ import ActiveOrder from './components/Customer/ActiveOrder';
 import EditOrder from './components/Customer/EditOrder';
 import SuccessScreen from './components/SuccessScreen';
 
+// Error boundary — catches render crashes and shows a message instead of blank page
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 40, fontFamily: 'sans-serif', textAlign: 'center' }}>
+          <h2>Something went wrong</h2>
+          <pre style={{ color: 'red', fontSize: 12, textAlign: 'left', background: '#fee', padding: 16, borderRadius: 8 }}>
+            {this.state.error.message}
+          </pre>
+          <button onClick={() => window.location.reload()} style={{ marginTop: 16, padding: '8px 24px', cursor: 'pointer' }}>
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Closed screen shown to customers when admin has closed the platform ─────────
 function ClosedScreen({ message, t }) {
   return (
@@ -329,12 +351,14 @@ function CustomerApp() {
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<CustomerApp />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </Router>
+      <ErrorBoundary>
+        <Router>
+          <Routes>
+            <Route path="/" element={<CustomerApp />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Routes>
+        </Router>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }
