@@ -51,18 +51,42 @@ function ConfirmModal({ open, title, message, confirmLabel, danger, onConfirm, o
   );
 }
 
-const EMPTY_PRODUCT = { name: '', description: '', price: '', stock_quantity: '', max_per_customer: '', category: 'General', image_url: '' };
+// Auto-dismissing toast notification for admin action feedback
+function Toast({ toast }) {
+  if (!toast) return null;
+  const isError = toast.type === 'error';
+  return (
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border text-sm font-black max-w-xs w-full transition-all ${
+      isError
+        ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-700 dark:text-red-300'
+        : 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300'
+    }`}>
+      <span className="text-lg">{isError ? '❌' : '✅'}</span>
+      <span className="flex-1">{toast.message}</span>
+    </div>
+  );
+}
 
 function AdminDashboard() {
   const { t, i18n } = useTranslation();
   const [token, setTokenRaw] = useState(() => localStorage.getItem('ngamia_admin_token') || null);
 
   // Persist token to localStorage so closing the browser doesn't log you out
-  const setToken = (t) => {
-    if (t) localStorage.setItem('ngamia_admin_token', t);
+  const setToken = (tk) => {
+    if (tk) localStorage.setItem('ngamia_admin_token', tk);
     else localStorage.removeItem('ngamia_admin_token');
-    setTokenRaw(t);
+    setTokenRaw(tk);
   };
+
+  // Toast notifications
+  const [toast, setToastState] = useState(null);
+  const toastTimer = React.useRef(null);
+  const showToast = (message, type = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastState({ message, type });
+    toastTimer.current = setTimeout(() => setToastState(null), 3000);
+  };
+
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -133,6 +157,7 @@ function AdminDashboard() {
         closed_message: closedMessage,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setPlatformOpen(res.data.is_open);
+      showToast(open ? '✅ System is now open — customers can order' : '🔒 System closed — customers see closed screen');
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Failed to update platform status');
     }
@@ -188,6 +213,7 @@ function AdminDashboard() {
       setProductFormData(EMPTY_PRODUCT);
       setImageFile(null);
       fetchData();
+      showToast(editingProduct ? '✅ Product updated' : '✅ Product added');
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Failed to save product');
     } finally {
@@ -205,6 +231,7 @@ function AdminDashboard() {
       setShowManualOrder(false);
       setManualOrderData({ customer_name: '', customer_phone: '', items: [] });
       fetchData();
+      showToast('✅ Order placed successfully');
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Failed to place order');
     } finally {
@@ -226,6 +253,7 @@ function AdminDashboard() {
         try {
           await api.delete(`/orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
           fetchData(false);
+          showToast('🗑️ Order removed and stock restored');
         } catch { setErrorMsg('Failed to remove order'); }
       },
     });
@@ -235,6 +263,7 @@ function AdminDashboard() {
     try {
       await api.patch(`/orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
       fetchData(false);
+      showToast(status === 'picked_up' ? '✅ Order marked as complete' : `Order updated to ${status}`);
     } catch { setErrorMsg('Update failed'); }
   };
 
@@ -286,6 +315,7 @@ function AdminDashboard() {
               setErrorMsg('');
               await api.delete(`/admin/orders/reset`, { headers: { Authorization: `Bearer ${token}` } });
               fetchData(false);
+              showToast('✅ All orders reset — stock restored');
             } catch (err) {
               setErrorMsg(err.response?.data?.error || 'Failed to reset orders');
             } finally {
@@ -308,6 +338,7 @@ function AdminDashboard() {
         try {
           await api.delete(`/products/${id}`, { headers: { Authorization: `Bearer ${token}` } });
           fetchData(false);
+          showToast(`🗑️ "${name}" deleted`);
         } catch (err) {
           setErrorMsg(err.response?.data?.error || 'Failed to delete product');
         }
@@ -334,6 +365,7 @@ function AdminDashboard() {
               setErrorMsg('');
               await api.delete(`/admin/products/clear`, { headers: { Authorization: `Bearer ${token}` } });
               fetchData(false);
+              showToast('✅ All products cleared');
             } catch (err) {
               setErrorMsg(err.response?.data?.error || 'Failed to clear products');
             } finally {
@@ -904,6 +936,8 @@ function AdminDashboard() {
         onConfirm={confirmModal.onConfirm}
         onCancel={closeConfirm}
       />
+
+      <Toast toast={toast} />
     </div>
   );
 }

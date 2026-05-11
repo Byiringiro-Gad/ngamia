@@ -80,5 +80,9 @@
   "platform_closed": "Système fermé",
   "platform_closed_msg": "Les commandes ne sont pas disponibles pour le moment. Revenez plus tard.",
   "open_system": "Ouvrir le système",
-  "close_system": "Fermer le système"
+  "close_system": "Fermer le système",
+  "phone_hint_short": "Continuez — 10 chiffres requis",
+  "phone_hint_invalid": "Doit commencer par 072, 073, 078 ou 079",
+  "phone_hint_valid": "Numéro rwandais valide",
+  "name_hint_short": "Le nom doit comporter au moins 2 caractères"
 }

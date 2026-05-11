@@ -80,5 +80,9 @@
   "platform_closed": "Sisitemu ifunzwe",
   "platform_closed_msg": "Gutumiza ntibishoboka ubu. Subira nyuma.",
   "open_system": "Fungura sisitemu",
-  "close_system": "Funga sisitemu"
+  "close_system": "Funga sisitemu",
+  "phone_hint_short": "Komeza wandike — imibare 10 irakenewe",
+  "phone_hint_invalid": "Itangire na 072, 073, 078 cyangwa 079",
+  "phone_hint_valid": "Numero y'u Rwanda yemewe",
+  "name_hint_short": "Izina rigomba kuba nibura inyuguti 2"
 }

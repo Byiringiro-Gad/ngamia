@@ -1,9 +1,15 @@
 const { z } = require('zod');
 
+// Rwandan phone: exactly 10 digits, starts with 07
+// Valid prefixes: 072 (Airtel), 073 (Airtel), 078 (MTN), 079 (MTN)
+const rwandaPhone = z.string()
+  .trim()
+  .regex(/^07[2389]\d{7}$/, 'Phone must be a valid Rwandan number (e.g. 0781234567)');
+
 const orderSchema = z.object({
   body: z.object({
     customer_name: z.string().trim().min(2, 'Name must be at least 2 characters'),
-    customer_phone: z.string().trim().regex(/^[0-9+]{10,15}$/, 'Invalid phone number format'),
+    customer_phone: rwandaPhone,
     items: z.array(z.object({
       product_id: z.number().int().positive(),
       quantity: z.number().int().positive().max(10, 'Maximum 10 items per product'),

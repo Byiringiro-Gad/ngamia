@@ -80,5 +80,9 @@
   "platform_closed": "System Closed",
   "platform_closed_msg": "Ordering is not available right now. Please check back later.",
   "open_system": "Open System",
-  "close_system": "Close System"
+  "close_system": "Close System",
+  "phone_hint_short": "Keep typing — 10 digits needed",
+  "phone_hint_invalid": "Must start with 072, 073, 078 or 079",
+  "phone_hint_valid": "Valid Rwandan number",
+  "name_hint_short": "Name must be at least 2 characters"
 }
