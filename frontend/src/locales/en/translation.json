@@ -74,5 +74,9 @@
   "confirm_delete_product": "Are you sure you want to delete",
   "clear_all_products": "Clear All Products",
   "confirm_clear_products": "WARNING: This will permanently delete ALL products and ALL orders. This cannot be undone. Are you sure?",
-  "confirm_clear_products_final": "Final confirmation: delete every product in the system?"
+  "confirm_clear_products_final": "Final confirmation: delete every product in the system?",
+  "platform_open": "Platform Open",
+  "platform_closed_label": "Platform Closed",
+  "platform_closed": "We're Closed",
+  "platform_closed_msg": "Ordering is not available right now. Please check back later."
 }

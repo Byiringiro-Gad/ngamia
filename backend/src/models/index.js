@@ -4,6 +4,7 @@ const Product = require('./Product');
 const Order = require('./Order');
 const OrderItem = require('./OrderItem');
 const TimeSlot = require('./TimeSlot');
+const Setting = require('./Setting');
 
 module.exports = {
   sequelize,
@@ -11,5 +12,6 @@ module.exports = {
   Product,
   Order,
   OrderItem,
-  TimeSlot
+  TimeSlot,
+  Setting,
 };

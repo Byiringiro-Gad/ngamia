@@ -5,7 +5,7 @@ import {
   Package, ClipboardList, Download, RefreshCcw,
   Check, Clock, Lock, LogOut, Loader2, Sun, Moon,
   Plus, Trash2, Minus, ArrowLeft, AlertCircle, X,
-  Tag, CreditCard, RotateCcw, ShieldAlert
+  Tag, CreditCard, RotateCcw, ShieldAlert, Power
 } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 import { SkeletonOrder, SkeletonProduct } from './components/Skeletons';
@@ -62,6 +62,8 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [platformOpen, setPlatformOpen] = useState(true);
+  const [closedMessage, setClosedMessage] = useState('');
   const [view, setView] = useState('orders');
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -76,6 +78,7 @@ function AdminDashboard() {
   useEffect(() => {
     if (token) {
       fetchData();
+      fetchPlatformStatus();
     }
   }, [token]);
 
@@ -105,6 +108,26 @@ function AdminDashboard() {
       }
     } finally {
       if (showFullLoading) setLoading(false);
+    }
+  };
+
+  const fetchPlatformStatus = async () => {
+    try {
+      const res = await api.get('/settings/status');
+      setPlatformOpen(res.data.is_open);
+      setClosedMessage(res.data.closed_message || '');
+    } catch { /* ignore */ }
+  };
+
+  const togglePlatform = async (open) => {
+    try {
+      const res = await api.patch('/settings', {
+        is_open: open,
+        closed_message: closedMessage,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setPlatformOpen(res.data.is_open);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.error || 'Failed to update platform status');
     }
   };
 
@@ -211,9 +234,18 @@ function AdminDashboard() {
   const exportPDF = async () => {
     try {
       const res = await api.get(`/admin/export/daily`, {
-        headers: { Authorization: `Bearer ${token}` }, responseType: 'blob',
-        _timeoutOverride: true, timeout: 30000, // PDF generation can take longer
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+        _timeoutOverride: true,
+        timeout: 30000,
       });
+      // If the server returned an error JSON (e.g. empty list), it comes as a blob — parse it
+      if (res.data.type === 'application/json' || res.headers['content-type']?.includes('application/json')) {
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        setErrorMsg(json.error || 'Export failed');
+        return;
+      }
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
@@ -221,7 +253,10 @@ function AdminDashboard() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch { setErrorMsg('Export failed'); }
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.error || 'Export failed');
+    }
   };
 
   const handleResetAllOrders = () => {
@@ -354,8 +389,8 @@ function AdminDashboard() {
             <h1 className="text-3xl font-black text-text-main font-display">{t('admin_portal')}</h1>
             <p className="text-text-muted text-sm mt-1">{t('admin_login_msg')}</p>
           </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input className="input-serious" placeholder="Username"
+          <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
+            <input className="input-serious" placeholder="Username" autoComplete="username"
               value={loginData.username} onChange={e => setLoginData({ ...loginData, username: e.target.value })} required />
             <input className="input-serious" type="password" placeholder="Password" autoComplete="new-password"
               value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} required />
@@ -423,6 +458,19 @@ function AdminDashboard() {
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-2xl text-primary text-sm font-bold hover:bg-primary/20 transition-all">
             <RefreshCcw size={14} /> Refresh
           </button>
+          {/* Platform open/close toggle */}
+          <button
+            onClick={() => togglePlatform(!platformOpen)}
+            type="button"
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold transition-all border-2 ${
+              platformOpen
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-100'
+                : 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400 hover:bg-orange-100'
+            }`}
+          >
+            <Power size={14} />
+            {platformOpen ? t('platform_open') : t('platform_closed_label')}
+          </button>
           {view === 'orders' && (
             <button onClick={handleResetAllOrders} disabled={resetting} type="button"
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-2xl text-white text-sm font-bold transition-all disabled:opacity-50 shadow-sm">
@@ -471,6 +519,18 @@ function AdminDashboard() {
               className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/30 text-primary active:scale-90 transition-all">
               <RefreshCcw size={16} />
             </button>
+            {/* Platform toggle — mobile */}
+            <button
+              onClick={() => togglePlatform(!platformOpen)}
+              type="button"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 transition-all border-2 ${
+                platformOpen
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-300 text-green-700 dark:text-green-400'
+                  : 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 text-orange-700 dark:text-orange-400'
+              }`}
+            >
+              <Power size={16} />
+            </button>
             <button onClick={exportPDF} type="button" className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white active:scale-90 transition-all">
               <Download size={16} />
             </button>
@@ -500,7 +560,17 @@ function AdminDashboard() {
             </h2>
             <p className="text-text-muted text-sm">{new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
-          {loading && <Loader2 className="animate-spin text-primary" size={20} />}
+          <div className="flex items-center gap-3">
+            <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border ${
+              platformOpen
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-300 text-green-700 dark:text-green-400'
+                : 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 text-orange-700 dark:text-orange-400'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${platformOpen ? 'bg-green-500' : 'bg-orange-500'}`} />
+              {platformOpen ? t('platform_open') : t('platform_closed_label')}
+            </span>
+            {loading && <Loader2 className="animate-spin text-primary" size={20} />}
+          </div>
         </div>
 
       {errorMsg && (

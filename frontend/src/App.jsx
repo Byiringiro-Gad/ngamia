@@ -15,6 +15,23 @@ import ActiveOrder from './components/Customer/ActiveOrder';
 import EditOrder from './components/Customer/EditOrder';
 import SuccessScreen from './components/SuccessScreen';
 
+// ── Closed screen shown to customers when admin has closed the platform ─────────
+function ClosedScreen({ message, t }) {
+  return (
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center">
+      <div className="card-serious p-10 max-w-sm w-full space-y-6">
+        <div className="text-6xl">🔒</div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-black text-text-main font-display">{t('platform_closed')}</h1>
+          <p className="text-text-muted text-sm leading-relaxed">
+            {message || t('platform_closed_msg')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomerApp() {
   const { t, i18n } = useTranslation();
 
@@ -35,6 +52,29 @@ function CustomerApp() {
   const [orderResult, setOrderResult] = useState(null);
   const [existingOrder, setExistingOrder] = useState(null);
   const [error, setError] = useState('');
+
+  // Platform open/close state
+  const [platformOpen, setPlatformOpen] = useState(true);
+  const [closedMessage, setClosedMessage] = useState('');
+  const [statusChecked, setStatusChecked] = useState(false);
+
+  // Check platform status once on mount, then every 30s
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await api.get('/settings/status');
+        setPlatformOpen(res.data.is_open);
+        setClosedMessage(res.data.closed_message || '');
+      } catch {
+        setPlatformOpen(true); // fail open — don't block customers on network error
+      } finally {
+        setStatusChecked(true);
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const setStep = (s) => { sessionStorage.setItem('ngamia_step', s); setStepRaw(s); };
   const setCustomer = (c) => { sessionStorage.setItem('ngamia_customer', JSON.stringify(c)); setCustomerRaw(c); };
@@ -186,6 +226,12 @@ function CustomerApp() {
       setLoading(false);
     }
   };
+
+  // Don't render anything until we know the platform status (avoids flash)
+  if (!statusChecked) return null;
+
+  // Platform closed — show closed screen to customers
+  if (!platformOpen) return <ClosedScreen message={closedMessage} t={t} />;
 
   switch (step) {
     case 'lang':

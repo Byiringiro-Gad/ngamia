@@ -3,8 +3,8 @@ const bcrypt = require('bcryptjs');
 const { generateToken } = require('../utils/auth');
 const PDFService = require('../services/PDFService');
 
-// Cost factor 8 keeps bcrypt under ~100ms on typical hardware while still being secure
-const BCRYPT_ROUNDS = 8;
+// Cost factor 6 — fast enough for admin-only use (~20ms), still bcrypt-secure
+const BCRYPT_ROUNDS = 6;
 
 exports.loginAdmin = async (req, res) => {
   try {
@@ -30,6 +30,12 @@ exports.getMe = async (req, res) => {
 
 exports.exportDailyManifest = async (req, res) => {
   try {
+    // Guard: refuse to generate an empty PDF
+    const { Order } = require('../models');
+    const count = await Order.count();
+    if (count === 0) {
+      return res.status(400).json({ error: 'No orders to export. The list is empty.' });
+    }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=daily-manifest.pdf');
     await PDFService.generateDailyManifest(res);
